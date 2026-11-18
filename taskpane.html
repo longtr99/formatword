@@ -77,19 +77,30 @@
       </div>
       
       <select id="presetSelect" class="preset-select" onchange="selectPreset(this.value)">
-        <option value="ufm">UFM - Trường Đại học Tài chính - Marketing</option>
-        <option value="ueh">UEH - Đại học Kinh tế TP.HCM</option>
-        <option value="ftu">FTU - Trường Đại học Ngoại thương</option>
-        <option value="neu">NEU - Đại học Kinh tế Quốc dân</option>
-        <option value="hust">HUST - Đại học Bách khoa Hà Nội</option>
-        <option value="hcmus">HCMUS - ĐH Khoa học Tự nhiên ĐHQG-HCM</option>
-        <option value="uit">UIT - ĐH Công nghệ Thông tin ĐHQG-HCM</option>
-        <option value="fpt">FPTU - Trường Đại học FPT</option>
-        <option value="tonducthang">TDTU - Trường Đại học Tôn Đức Thắng</option>
-        <option value="apa7">Chuẩn Quốc tế APA 7th Edition</option>
-        <option value="nd30">Hành chính Nhà nước (Nghị định 30/2020)</option>
-        <option value="custom">⚙️ Tùy chỉnh riêng theo nhu cầu</option>
-      </select>
+  <option value="auto_detect">⚡ Tự động chọn trường — Nhận diện theo trang bìa</option>
+  <option value="tap_chi_ld">📖 Tạp chí L&D / Nghiên cứu tự do & Quốc tế</option>
+  <option value="tieu_chuan_dh">🎓 Tiêu chuẩn ĐH — Đồ án / Khóa luận chung</option>
+  <option value="ufm">UFM - Trường Đại học Tài chính - Marketing</option>
+  <option value="ueh">UEH - Đại học Kinh tế TP.HCM</option>
+  <option value="ftu">FTU - Trường Đại học Ngoại thương</option>
+  <option value="neu">NEU - Đại học Kinh tế Quốc dân</option>
+  <option value="hust">HUST - Đại học Bách khoa Hà Nội</option>
+  <option value="hcmus">HCMUS - ĐH Khoa học Tự nhiên ĐHQG-HCM</option>
+  <option value="uit">UIT - ĐH Công nghệ Thông tin ĐHQG-HCM</option>
+  <option value="fpt">FPTU - Trường Đại học FPT</option>
+  <option value="tonducthang">TDTU - Trường Đại học Tôn Đức Thắng</option>
+  <option value="bku">Đại học Bách Khoa (ĐHQG TPHCM)</option>
+  <option value="neu_ HN">Đại học Ngoại ngữ - ĐHQGHN (HANU/ULIS)</option>
+  <option value="intl_thesis">Intl Thesis — International Thesis / Dissertation</option>
+  <option value="chinese_gbt">Tiếng Trung (GB/T) — Khóa luận (GB/T 7714)</option>
+  <option value="japanese">Tiếng Nhật (卒業論文) — Khóa luận</option>
+  <option value="korean">Tiếng Hàn (졸업논문) — Khóa luận</option>
+  <option value="ieee">IEEE — IEEE Transactions (Kỹ thuật & CNTT)</option>
+  <option value="harvard">Harvard UK — Harvard Standard (UK Style)</option>
+  <option value="apa7">Chuẩn Quốc tế APA 7th Edition</option>
+  <option value="nd30">Hành chính Nhà nước (Nghị định 30/2020)</option>
+  <option value="custom">⚙️ Tùy chỉnh riêng theo nhu cầu</option>
+</select>
 
       <div class="chip-group">
         <button class="chip active" data-preset="ufm" onclick="selectPreset('ufm')">UFM</button>
