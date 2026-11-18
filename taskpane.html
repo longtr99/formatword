@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FormatWord Pro - Chuẩn Hóa Văn Bản</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-hover: #1e40af;
+      --primary-light: #eff6ff;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 10px; font-size: 12.5px; padding-bottom: 42px; }
+    .header { background: linear-gradient(135deg, #0f172a, #1d4ed8); color: #fff; padding: 11px 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 14.5px; font-weight: 700; letter-spacing: -0.2px; }
+    .header span { font-size: 10.5px; background: rgba(255,255,255,0.18); padding: 2px 6px; border-radius: 4px; }
+    .tabs { display: flex; gap: 3px; margin-bottom: 10px; background: #e2e8f0; padding: 3px; border-radius: 7px; }
+    .tab { flex: 1; text-align: center; padding: 6px 4px; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 11.5px; color: var(--muted); border: none; background: transparent; transition: 0.15s; }
+    .tab.active { background: var(--card); color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 9px; }
+    .card-title { font-weight: 700; font-size: 11.5px; color: #334155; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Preset Dropdown & Chips giống FormatWord */
+    .preset-select { width: 100%; padding: 7px 9px; border: 1.5px solid var(--primary); border-radius: 6px; font-size: 12.5px; font-weight: 600; color: var(--text); background: #fff; margin-bottom: 8px; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .chip { padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 14px; font-size: 11px; font-weight: 600; background: #fff; color: #334155; cursor: pointer; transition: 0.15s; }
+    .chip:hover { border-color: var(--primary); color: var(--primary); }
+    .chip.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+    /* Bảng tóm tắt thông số trực tiếp */
+    .summary-box { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 9px; margin-bottom: 8px; font-size: 11.5px; color: #1e293b; line-height: 1.45; }
+    .summary-box strong { color: var(--primary); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 7px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 7px; }
+    label { display: block; font-size: 10.5px; color: var(--muted); margin-bottom: 2px; font-weight: 600; }
+    select, input[type="number"] { width: 100%; padding: 5px 6px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; background: #fff; }
+    
+    .btn { width: 100%; padding: 8px 10px; border: none; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 6px; transition: 0.15s; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(26,86,219,0.25); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: #fff; color: var(--text); border: 1px solid #cbd5e1; }
+    .btn-outline:hover { background: #f1f5f9; }
+    .btn-sm { padding: 6px 8px; font-size: 11.5px; }
+    
+    .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; margin-bottom: 6px; cursor: pointer; }
+    .status { position: fixed; bottom: 0; left: 0; right: 0; background: #0f172a; color: #fff; padding: 7px 12px; font-size: 11.5px; display: none; z-index: 99; }
+    .status.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FormatWord Pro</h1>
+    <span>v2.0 • Mac &amp; Win</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('presets', this)">Quy chuẩn</button>
+    <button class="tab" onclick="switchTab('clean', this)">Dọn dẹp</button>
+    <button class="tab" onclick="switchTab('layout', this)">Trang &amp; Mục lục</button>
+  </div>
+
+  <!-- TAB 1: QUY CHUẨN & TÙY CHỈNH -->
+  <div id="tab-presets" class="panel active">
+    <div class="card">
+      <div class="card-title">
+        <span>CHỌN QUY CHUẨN ÁP DỤNG</span>
+      </div>
+      
+      <select id="presetSelect" class="preset-select" onchange="selectPreset(this.value)">
+        <option value="ufm">UFM - Trường Đại học Tài chính - Marketing</option>
+        <option value="ueh">UEH - Đại học Kinh tế TP.HCM</option>
+        <option value="ftu">FTU - Trường Đại học Ngoại thương</option>
+        <option value="neu">NEU - Đại học Kinh tế Quốc dân</option>
+        <option value="hust">HUST - Đại học Bách khoa Hà Nội</option>
+        <option value="hcmus">HCMUS - ĐH Khoa học Tự nhiên ĐHQG-HCM</option>
+        <option value="uit">UIT - ĐH Công nghệ Thông tin ĐHQG-HCM</option>
+        <option value="fpt">FPTU - Trường Đại học FPT</option>
+        <option value="tonducthang">TDTU - Trường Đại học Tôn Đức Thắng</option>
+        <option value="apa7">Chuẩn Quốc tế APA 7th Edition</option>
+        <option value="nd30">Hành chính Nhà nước (Nghị định 30/2020)</option>
+        <option value="custom">⚙️ Tùy chỉnh riêng theo nhu cầu</option>
+      </select>
+
+      <div class="chip-group">
+        <button class="chip active" data-preset="ufm" onclick="selectPreset('ufm')">UFM</button>
+        <button class="chip" data-preset="ueh" onclick="selectPreset('ueh')">UEH</button>
+        <button class="chip" data-preset="ftu" onclick="selectPreset('ftu')">FTU</button>
+        <button class="chip" data-preset="neu" onclick="selectPreset('neu')">NEU</button>
+        <button class="chip" data-preset="hust" onclick="selectPreset('hust')">Bách Khoa</button>
+        <button class="chip" data-preset="hcmus" onclick="selectPreset('hcmus')">KHTN</button>
+        <button class="chip" data-preset="fpt" onclick="selectPreset('fpt')">ĐH FPT</button>
+        <button class="chip" data-preset="apa7" onclick="selectPreset('apa7')">APA 7</button>
+        <button class="chip" data-preset="nd30" onclick="selectPreset('nd30')">NĐ30</button>
+        <button class="chip" data-preset="custom" onclick="selectPreset('custom')">Tùy chỉnh</button>
+      </div>
+
+      <div id="presetSummary" class="summary-box">
+        <strong>UFM (Khóa luận / Luận văn):</strong><br/>
+        Times New Roman • 13pt • Lề T3.5 - P2 - Tr2.5 - D2.5 cm • Giãn dòng 1.5 lines
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="optAutoClean" checked />
+        <span>Tự động xóa khoảng trắng kép &amp; lỗi dấu câu khi chuẩn hóa</span>
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="optPageNumber" checked />
+        <span>Tự động đánh số trang theo đúng quy chuẩn đã chọn</span>
+      </label>
+
+      <button class="btn btn-primary" onclick="applySelectedStandard()">⚡ Chuẩn hóa tài liệu ngay</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">TÙY CHỈNH THÔNG SỐ CHI TIẾT</div>
+      <div class="grid-2">
+        <div>
+          <label>Font chữ</label>
+          <select id="fontFamily" onchange="markCustom()">
+            <option value="Times New Roman" selected>Times New Roman</option>
+            <option value="Arial">Arial</option>
+            <option value="Calibri">Calibri</option>
+            <option value="Georgia">Georgia</option>
+          </select>
+        </div>
+        <div>
+          <label>Cỡ chữ (pt)</label>
+          <input type="number" id="fontSize" value="13" step="0.5" min="8" max="24" onchange="markCustom()" />
+        </div>
+        <div>
+          <label>Giãn dòng (Line spacing)</label>
+          <select id="lineSpacing" onchange="markCustom()">
+            <option value="1.0">Single (1.0)</option>
+            <option value="1.15">1.15 lines</option>
+            <option value="1.3">1.3 lines</option>
+            <option value="1.5" selected>1.5 lines</option>
+            <option value="2.0">Double (2.0)</option>
+          </select>
+        </div>
+        <div>
+          <label>Thụt đầu dòng (cm)</label>
+          <input type="number" id="firstIndent" value="1.27" step="0.01" min="0" max="5" onchange="markCustom()" />
+        </div>
+        <div>
+          <label>Cách đoạn trên (pt)</label>
+          <input type="number" id="spaceBefore" value="0" min="0" max="30" onchange="markCustom()" />
+        </div>
+        <div>
+          <label>Cách đoạn dưới (pt)</label>
+          <input type="number" id="spaceAfter" value="6" min="0" max="30" onchange="markCustom()" />
+        </div>
+      </div>
+
+      <label style="margin-top:4px;">Căn lề trang (cm): Trên / Dưới / Trái / Phải</label>
+      <div class="grid-4">
+        <input type="number" id="mTop" value="2.5" step="0.1" title="Lề Trên (cm)" onchange="markCustom()" />
+        <input type="number" id="mBottom" value="2.5" step="0.1" title="Lề Dưới (cm)" onchange="markCustom()" />
+        <input type="number" id="mLeft" value="3.5" step="0.1" title="Lề Trái (cm)" onchange="markCustom()" />
+        <input type="number" id="mRight" value="2.0" step="0.1" title="Lề Phải (cm)" onchange="markCustom()" />
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Căn lề đoạn</label>
+          <select id="alignment" onchange="markCustom()">
+            <option value="Justified" selected>Căn đều (Justify)</option>
+            <option value="Left">Căn trái (Left)</option>
+          </select>
+        </div>
+        <div>
+          <label>Vị trí số trang</label>
+          <select id="pageNumPos" onchange="markCustom()">
+            <option value="bottom_center" selected>Dưới - Giữa (Học thuật)</option>
+            <option value="top_center">Trên - Giữa (NĐ30)</option>
+            <option value="top_right">Trên - Phải (APA 7)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: DỌN DẸP LỖI VĂN BẢN -->
+  <div id="tab-clean" class="panel">
+    <div class="card">
+      <div class="card-title">XỬ LÝ LỖI COPY/PASTE &amp; KHOẢNG TRẮNG</div>
+      <button class="btn btn-primary" onclick="cleanAllErrors()">🧹 Dọn dẹp tất cả lỗi phổ biến</button>
+      <button class="btn btn-outline btn-sm" onclick="removeDoubleSpaces()">Xóa khoảng trắng kép (2+ dấu cách → 1)</button>
+      <button class="btn btn-outline btn-sm" onclick="removeEmptyLines()">Xóa dòng trống thừa (Enter thừa)</button>
+      <button class="btn btn-outline btn-sm" onclick="fixPunctuationSpaces()">Chuẩn hóa dấu câu (. , ; : ! ?)</button>
+      <button class="btn btn-outline btn-sm" onclick="softBreakToParagraph()">Chuyển ngắt dòng mềm (Shift+Enter) → Enter</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">CHUYỂN ĐỔI CHỮ HOA / THƯỜNG (VÙNG CHỌN)</div>
+      <div class="grid-2">
+        <button class="btn btn-outline btn-sm" onclick="changeCase('UPPER')">CHỮ IN HOA</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('LOWER')">chữ in thường</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('TITLE')">Viết Hoa Đầu Từ</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('SENTENCE')">Viết hoa đầu câu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: TRANG & MỤC LỤC -->
+  <div id="tab-layout" class="panel">
+    <div class="card">
+      <div class="card-title">GÁN NHANH HEADING TẠO MỤC LỤC (VÙNG CHỌN)</div>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(1)">Heading 1: IN HOA, ĐẬM (Chương 1, 2...)</button>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(2)">Heading 2: Chữ thường, ĐẬM (1.1, 1.2...)</button>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(3)">Heading 3: Chữ thường, ĐẬM, NGHIÊNG (1.1.1...)</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">ĐÁNH SỐ TRANG &amp; XOAY HƯỚNG GIẤY</div>
+      <button class="btn btn-outline btn-sm" onclick="applyPageNumbersOnly()">🔢 Đánh số trang theo cấu hình đang chọn</button>
+      <div class="grid-2" style="margin-top:6px;">
+        <button class="btn btn-outline btn-sm" onclick="insertLandscapeSection()">➕ Ngắt sang trang Ngang</button>
+        <button class="btn btn-outline btn-sm" onclick="insertPortraitSection()">➕ Ngắt về trang Dọc</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
