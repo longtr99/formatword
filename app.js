@@ -255,8 +255,12 @@ async function applyPageNumbersOnly(silent = false) {
     p.alignment = align;
     p.font.name = fontFamily;
     p.font.size = 12;
-    p.insertField(Word.InsertLocation.end, Word.FieldType.page);
-
+    if (typeof p.insertField === "function") {
+  p.insertField(Word.InsertLocation.end, Word.FieldType.page);
+} else {
+  const pageOoxml = '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage"><pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml"><pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships></pkg:xmlData></pkg:part><pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"><pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
+  p.insertOoxml(pageOoxml, Word.InsertLocation.end);
+}
     await context.sync();
     if (!silent) showStatus("✅ Đã cập nhật đánh số trang!");
   });
