@@ -218,6 +218,26 @@ async function applySelectedStandard() {
     if (document.getElementById("optPageNumber").checked) {
       await applyPageNumbersOnly(true);
     }
+const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
+const optRomanPages = document.getElementById("optRomanPages")?.checked;
+const optAutoCaption = document.getElementById("optAutoCaption")?.checked;
+const optFitMedia = document.getElementById("optFitMedia")?.checked;
+
+const activeFont = document.getElementById("fontSelect")?.value || "Times New Roman";
+const activeSize = parseFloat(document.getElementById("fontSizeInput")?.value) || 13;
+
+if (optCleanAiWeb) {
+  await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
+}
+if (optFitMedia) {
+  await fitImagesAndTablesSafe(context, doc);
+}
+if (optAutoCaption) {
+  await autoGenerateCaptions(context, doc);
+}
+if (optRomanPages) {
+  await applyRomanHeaderFooterBeforeChapter1(context, doc);
+}
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
@@ -434,4 +454,143 @@ async function insertPortraitSection() {
     await context.sync();
     showStatus("✅ Đã chuyển về trang hướng Dọc (Portrait)!");
   });
+}// 1. XÓA DẤU VẾT AI & WEB + CHUẨN HÓA MARKDOWN CƠ BẢN
+async function cleanAiAndWebTraces(context, doc, targetFont, targetSize) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items");
+  await context.sync();
+
+  const batchSize = 40;
+  for (let i = 0; i < paragraphs.items.length; i += batchSize) {
+    const chunk = paragraphs.items.slice(i, i + batchSize);
+    for (const p of chunk) {
+      try {
+        p.font.highlightColor = null;
+        p.font.color = "#000000";
+        p.font.name = targetFont;
+        p.font.size = targetSize;
+      } catch (e) {}
+    }
+    await context.sync();
+  }
+
+  const markdownPatterns = [
+    { search: "**", replace: "" },
+    { search: "__", replace: "" },
+    { search: "`", replace: "" }
+  ];
+
+  for (const item of markdownPatterns) {
+    const results = doc.body.search(item.search, { matchCase: false, matchWholeWord: false });
+    results.load("items");
+    await context.sync();
+    for (const r of results.items) {
+      r.insertText(item.replace, Word.InsertLocation.replace);
+    }
+    await context.sync();
+  }
 }
+
+// 2. CĂN CHỈNH & CO DÃN ẢNH + BẢNG VỪA VÙNG AN TOÀN (15.5 cm dọc / 24.5 cm ngang)
+async function fitImagesAndTablesSafe(context, doc) {
+  const MAX_PORTRAIT_PT = 15.5 * 28.3465;
+
+  try {
+    const inlinePics = doc.body.inlinePictures;
+    inlinePics.load("items, width, height");
+    await context.sync();
+
+    for (const pic of inlinePics.items) {
+      if (pic.width > MAX_PORTRAIT_PT) {
+        const ratio = pic.height && pic.width ? pic.height / pic.width : 0.65;
+        pic.width = MAX_PORTRAIT_PT;
+        pic.height = Math.round(MAX_PORTRAIT_PT * ratio);
+      }
+    }
+    await context.sync();
+  } catch (e) {}
+
+  try {
+    const tables = doc.body.tables;
+    tables.load("items, width");
+    await context.sync();
+
+    for (const tbl of tables.items) {
+      if (tbl.width > MAX_PORTRAIT_PT) {
+        tbl.width = Math.min(tbl.width, MAX_PORTRAIT_PT);
+      }
+    }
+    await context.sync();
+  } catch (e) {}
+}
+
+// 3. TỰ ĐỘNG SINH CHÚ THÍCH (Hình X.Y / Bảng X.Y) CHO MỤC CHƯA CÓ TÊN
+async function autoGenerateCaptions(context, doc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  let chapterNum = 1;
+  let figIndex = 0;
+  let tblIndex = 0;
+
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const p = paragraphs.items[i];
+    const txt = (p.text || "").trim();
+
+    const chapMatch = txt.match(/^(CHƯƠNG|CHUONG|CHAPTER)\s+(\d+)/i);
+    if (chapMatch) {
+      chapterNum = parseInt(chapMatch[2], 10) || chapterNum;
+      figIndex = 0;
+      tblIndex = 0;
+    }
+
+    if (/^(Hình|Bảng)\s*:/i.test(txt)) {
+      if (/^Hình/i.test(txt)) {
+        figIndex += 1;
+        p.insertText(`Hình ${chapterNum}.${figIndex}`, Word.InsertLocation.start);
+      } else {
+        tblIndex += 1;
+        p.insertText(`Bảng ${chapterNum}.${tblIndex}`, Word.InsertLocation.start);
+      }
+    }
+  }
+  await context.sync();
+}
+
+// 4. ĐÁNH SỐ TRANG LA MÃ (i, ii, iii...) CHO CÁC TRANG ĐẦU TRƯỚC CHƯƠNG 1
+async function applyRomanHeaderFooterBeforeChapter1(context, doc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  let chapter1Index = -1;
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const t = (paragraphs.items[i].text || "").trim();
+    if (/^(CHƯƠNG|CHUONG|CHAPTER)\s+1\b/i.test(t)) {
+      chapter1Index = i;
+      break;
+    }
+  }
+
+  if (chapter1Index > 0) {
+    try {
+      paragraphs.items[chapter1Index].insertBreak(Word.BreakType.next, Word.InsertLocation.before);
+      await context.sync();
+    } catch (e) {}
+  }
+
+  try {
+    const firstSection = doc.sections.getFirst();
+    const footer = firstSection.getFooter(Word.HeaderFooterType.primary);
+    const ooxmlRomanPage =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      '<w:part><w:xmlData><w:p><w:pPr><w:jc w:val="center"/></w:pPr>' +
+      '<w:fldSimple w:instr="PAGE \\* roman"/>' +
+      '</w:p></w:xmlData></w:part></w:pkg>';
+    footer.insertOoxml(ooxmlRomanPage, Word.InsertLocation.end);
+    await context.sync();
+  } catch (e) {}
+}
+
