@@ -183,7 +183,69 @@ function updateCustomSummary() {
 }
 
 const cmToPt = (cm) => cm * 28.3464567;
+// Bảo vệ Section Bìa (Section 0 nếu chứa bìa UFM) và mọi dòng Mục lục (TOC)
+async function getContentStartSectionIndex(context, doc) {
+  const sections = doc.sections;
+  sections.load("items");
+  await context.sync();
 
+  if (sections.items.length <= 1) return 0;
+
+  const firstSecBody = sections.items[0].body;
+  firstSecBody.load("text");
+  await context.sync();
+
+  const upper = (firstSecBody.text || "").toUpperCase();
+  const looksLikeCover =
+    upper.includes("BỘ TÀI CHÍNH") ||
+    upper.includes("TRƯỜNG ĐẠI HỌC TÀI CHÍNH") ||
+    upper.includes("LUẬN VĂN THẠC SĨ") ||
+    upper.includes("ĐỀ ÁN TỐT NGHIỆP") ||
+    upper.includes("KHÓA LUẬN TỐT NGHIỆP");
+  const hasBodyContent = upper.includes("CHƯƠNG 1") || upper.includes("MỤC LỤC");
+
+  return (looksLikeCover && !hasBodyContent) ? 1 : 0;
+}
+
+async function loadContentParagraphs(context, doc, props = "items,text,style,styleBuiltIn") {
+  const startIdx = await getContentStartSectionIndex(context, doc);
+  const sections = doc.sections;
+  sections.load("items");
+  await context.sync();
+
+  const paraCollections = [];
+  for (let i = startIdx; i < sections.items.length; i++) {
+    const pCol = sections.items[i].body.paragraphs;
+    pCol.load(props);
+    paraCollections.push(pCol);
+  }
+  await context.sync();
+
+  const paragraphs = [];
+  for (const col of paraCollections) {
+    for (const p of col.items) {
+      paragraphs.push(p);
+    }
+  }
+  return { paragraphs, sections: sections.items, startIdx };
+}
+
+function isTocParagraph(p) {
+  const builtIn = (p.styleBuiltIn ? p.styleBuiltIn.toString() : "").toLowerCase();
+  const styleName = (p.style ? p.style.toString() : "").toLowerCase();
+  const txt = (p.text || "").trim();
+  if (builtIn.includes("toc")) return true;
+  if (styleName.includes("toc") || styleName.includes("mục lục") || styleName.includes("table of contents")) return true;
+  // Dòng mục lục luôn kết thúc bằng phím Tab + số trang (1, 2... hoặc i, ii...)
+  if (/\t\s*(\d+|[ivxlcdm]+)\s*$/i.test(txt)) return true;
+  return false;
+}
+
+function isHeadingParagraph(p) {
+  const builtIn = (p.styleBuiltIn ? p.styleBuiltIn.toString() : "").toLowerCase();
+  const styleName = (p.style ? p.style.toString() : "").toLowerCase();
+  return builtIn.startsWith("heading") || styleName.startsWith("heading");
+}
 async function applySelectedStandard() {
   try {
     showStatus("⏳ Đang chuẩn hóa văn bản...", 0);
@@ -205,13 +267,13 @@ async function applySelectedStandard() {
       const mRight = parseFloat(document.getElementById("mRight").value);
       const align = document.getElementById("alignment").value;
 
-      const sections = context.document.sections;
-      sections.load("items");
-      const paragraphs = context.document.body.paragraphs;
-      paragraphs.load("items,styleBuiltIn");
-      await context.sync();
+    const { paragraphs, sections } = await loadContentParagraphs(
+        context,
+        context.document,
+        "items,text,style,styleBuiltIn"
+      );
 
-      sections.items.forEach((sec) => {
+      sections.forEach((sec) => {
         sec.pageSetup.paperSize = Word.PaperSize.a4;
         sec.pageSetup.topMargin = cmToPt(mTop);
         sec.pageSetup.bottomMargin = cmToPt(mBottom);
@@ -219,17 +281,15 @@ async function applySelectedStandard() {
         sec.pageSetup.rightMargin = cmToPt(mRight);
       });
 
-      paragraphs.items.forEach((p) => {
+      paragraphs.forEach((p) => {
         p.font.name = fontFamily;
-        const isHeading = p.styleBuiltIn && p.styleBuiltIn.toString().startsWith("Heading");
-        if (!isHeading) {
-          p.font.size = fontSize;
-          p.lineSpacing = fontSize * lineMult;
-          p.spaceBefore = before;
-          p.spaceAfter = after;
-          p.firstLineIndent = cmToPt(indent);
-          p.alignment = align === "Justified" ? Word.Alignment.justified : Word.Alignment.left;
-        }
+        if (isHeadingParagraph(p) || isTocParagraph(p)) return;
+        p.font.size = fontSize;
+        p.lineSpacing = fontSize * lineMult;
+        p.spaceBefore = before;
+        p.spaceAfter = after;
+        p.firstLineIndent = cmToPt(indent);
+        p.alignment = align === "Justified" ? Word.Alignment.justified : Word.Alignment.left;
       });
 
       await context.sync();
@@ -555,19 +615,20 @@ async function insertPortraitSection() {
   });
 }// 1. XÓA DẤU VẾT AI & WEB + CHUẨN HÓA MARKDOWN CƠ BẢN
 async function cleanAiAndWebTraces(context, doc, targetFont, targetSize) {
-  const paragraphs = doc.body.paragraphs;
-  paragraphs.load("items");
-  await context.sync();
+  const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
   const batchSize = 40;
-  for (let i = 0; i < paragraphs.items.length; i += batchSize) {
-    const chunk = paragraphs.items.slice(i, i + batchSize);
+  for (let i = 0; i < paragraphs.length; i += batchSize) {
+    const chunk = paragraphs.slice(i, i + batchSize);
     for (const p of chunk) {
+      if (isTocParagraph(p)) continue;
       try {
         p.font.highlightColor = null;
         p.font.color = "#000000";
         p.font.name = targetFont;
-        p.font.size = targetSize;
+        if (!isHeadingParagraph(p)) {
+          p.font.size = targetSize;
+        }
       } catch (e) {}
     }
     await context.sync();
@@ -694,14 +755,13 @@ async function applyRomanHeaderFooterBeforeChapter1(context, doc) {
 }
 // V2.1 - 1. ÁP DỤNG CỠ CHỮ RIÊNG CHO HEADING 1-3 & ĐỊNH DẠNG CHÚ THÍCH BẢNG/HÌNH
 async function applyHeadingAndCaptionSizes(context, doc, targetFont, hSizes, boldLabel, italicDesc) {
-  const paragraphs = doc.body.paragraphs;
-  paragraphs.load("items, text, style");
-  await context.sync();
+  const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
   const batchSize = 40;
-  for (let i = 0; i < paragraphs.items.length; i += batchSize) {
-    const chunk = paragraphs.items.slice(i, i + batchSize);
+  for (let i = 0; i < paragraphs.length; i += batchSize) {
+    const chunk = paragraphs.slice(i, i + batchSize);
     for (const p of chunk) {
+      if (isTocParagraph(p)) continue;
       try {
         const st = (p.style || "").toLowerCase();
         const txt = (p.text || "").trim();
