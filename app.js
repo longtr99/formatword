@@ -238,6 +238,46 @@ if (optAutoCaption) {
 if (optRomanPages) {
   await applyRomanHeaderFooterBeforeChapter1(context, doc);
 }
+// Chạy bổ sung V2.1 (Heading, Landscape, Chú thích, Tài liệu tham khảo, Mục lục)
+const optAutoToc = document.getElementById("optAutoToc")?.checked;
+const optKeepLandscape = document.getElementById("optKeepLandscape")?.checked;
+const optBoldCaptionLabel = document.getElementById("optBoldCaptionLabel")?.checked;
+const optItalicCaptionDesc = document.getElementById("optItalicCaptionDesc")?.checked;
+const optRefHanging = document.getElementById("optRefHanging")?.checked;
+const optCheckFrontOrder = document.getElementById("optCheckFrontOrder")?.checked;
+
+const hSizes = {
+  h1: parseFloat(document.getElementById("sizeH1")?.value) || 14,
+  h2: parseFloat(document.getElementById("sizeH2")?.value) || 14,
+  h3: parseFloat(document.getElementById("sizeH3")?.value) || 13,
+  cap: parseFloat(document.getElementById("sizeCaption")?.value) || 12
+};
+
+await applyHeadingAndCaptionSizes(context, doc, activeFont, hSizes, optBoldCaptionLabel, optItalicCaptionDesc);
+
+if (optKeepLandscape) {
+  await fitLandscapeAwareMedia(context, doc);
+}
+if (optRefHanging) {
+  await formatReferencesHangingIndent(context, doc);
+}
+if (optAutoToc) {
+  await insertOrUpdateAcademicToc(context, doc);
+}
+if (optCheckFrontOrder) {
+  await checkFrontMatterOrderNotice(context, doc);
+}
+
+// Chạy bổ sung V2.2 (Chuẩn trích dẫn, TOC 3/4 cấp, Vị trí số trang V2.2)
+const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
+const tocDepth = document.getElementById("tocDepthSelect")?.value || "1-4";
+const pagePosV22 = document.getElementById("pagePosV22")?.value || "keep";
+const optCleanRefQuotes = document.getElementById("optCleanRefQuotes")?.checked;
+
+await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQuotes);
+if (pagePosV22 !== "keep") {
+  await applyPageNumberPositionOOXML(context, doc, pagePosV22);
+}
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
@@ -590,6 +630,266 @@ async function applyRomanHeaderFooterBeforeChapter1(context, doc) {
       '<w:fldSimple w:instr="PAGE \\* roman"/>' +
       '</w:p></w:xmlData></w:part></w:pkg>';
     footer.insertOoxml(ooxmlRomanPage, Word.InsertLocation.end);
+    await context.sync();
+  } catch (e) {}
+}
+// V2.1 - 1. ÁP DỤNG CỠ CHỮ RIÊNG CHO HEADING 1-3 & ĐỊNH DẠNG CHÚ THÍCH BẢNG/HÌNH
+async function applyHeadingAndCaptionSizes(context, doc, targetFont, hSizes, boldLabel, italicDesc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text, style");
+  await context.sync();
+
+  const batchSize = 40;
+  for (let i = 0; i < paragraphs.items.length; i += batchSize) {
+    const chunk = paragraphs.items.slice(i, i + batchSize);
+    for (const p of chunk) {
+      try {
+        const st = (p.style || "").toLowerCase();
+        const txt = (p.text || "").trim();
+
+        if (st.includes("heading 1") || /^(CHƯƠNG|CHUONG|CHAPTER)\s+\d+/i.test(txt)) {
+          p.font.name = targetFont;
+          p.font.size = hSizes.h1;
+          p.font.bold = true;
+        } else if (st.includes("heading 2") || /^\d+\.\d+\.?\s+\S+/.test(txt)) {
+          p.font.name = targetFont;
+          p.font.size = hSizes.h2;
+          p.font.bold = true;
+        } else if (st.includes("heading 3") || /^\d+\.\d+\.\d+\.?\s+\S+/.test(txt)) {
+          p.font.name = targetFont;
+          p.font.size = hSizes.h3;
+          p.font.bold = true;
+        } else if (/^(Bảng|Hình|Figure|Table)\s+\d+(\.\d+)?\s*[:.]/i.test(txt)) {
+          p.font.name = targetFont;
+          p.font.size = hSizes.cap;
+          if (italicDesc) p.font.italic = true;
+
+          if (boldLabel) {
+            const match = txt.match(/^(Bảng|Hình|Figure|Table)\s+\d+(\.\d+)?\s*[:.]?/i);
+            if (match) {
+              const found = p.search(match[0], { matchCase: false });
+              found.load("items");
+              await context.sync();
+              if (found.items.length > 0) {
+                found.items[0].font.bold = true;
+                found.items[0].font.italic = false;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    await context.sync();
+  }
+}
+
+// V2.1 - 2. CO DÃN ẢNH/BẢNG THEO HƯỚNG TRANG (15.5 CM DỌC / 24.5 CM NGANG)
+async function fitLandscapeAwareMedia(context, doc) {
+  const MAX_PORTRAIT_PT = 15.5 * 28.3465;
+  const MAX_LANDSCAPE_PT = 24.5 * 28.3465;
+
+  let isLandscapeDoc = false;
+  try {
+    const sec = doc.sections.getFirst();
+    sec.body.load("pageSetup");
+    await context.sync();
+    if (sec.body.pageSetup && sec.body.pageSetup.orientation === Word.PageOrientation.landscape) {
+      isLandscapeDoc = true;
+    }
+  } catch (e) {}
+
+  const limitPt = isLandscapeDoc ? MAX_LANDSCAPE_PT : MAX_PORTRAIT_PT;
+
+  try {
+    const tables = doc.body.tables;
+    tables.load("items, width");
+    await context.sync();
+    for (const tbl of tables.items) {
+      const targetMax = tbl.width > (16.5 * 28.3465) ? MAX_LANDSCAPE_PT : limitPt;
+      if (tbl.width > targetMax) {
+        tbl.width = targetMax;
+      }
+    }
+    await context.sync();
+  } catch (e) {}
+}
+
+// V2.1 - 3. CHUẨN HÓA TÀI LIỆU THAM KHẢO (HANGING INDENT 1.27 CM)
+async function formatReferencesHangingIndent(context, doc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  let inRefSection = false;
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const p = paragraphs.items[i];
+    const txt = (p.text || "").trim();
+
+    if (/^(TÀI LIỆU THAM KHẢO|DANH MỤC TÀI LIỆU THAM KHẢO|REFERENCES)/i.test(txt)) {
+      inRefSection = true;
+      continue;
+    }
+    if (inRefSection && /^(PHỤ LỤC|APPENDIX)/i.test(txt)) {
+      break;
+    }
+
+    if (inRefSection && txt.length > 10) {
+      try {
+        p.leftIndent = 36;
+        p.firstLineIndent = -36;
+        p.alignment = Word.Alignment.justified;
+      } catch (e) {}
+    }
+  }
+  await context.sync();
+}
+
+// V2.1 - 4. TỰ ĐỘNG TẠO / CẬP NHẬT MỤC LỤC (TOC 4 CẤP) QUA OOXML AN TOÀN CHO WORD MAC
+async function insertOrUpdateAcademicToc(context, doc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  let tocAnchorIndex = -1;
+  let alreadyHasToc = false;
+
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const t = (paragraphs.items[i].text || "").trim();
+    if (/^MỤC LỤC$/i.test(t)) {
+      tocAnchorIndex = i;
+      if (i + 1 < paragraphs.items.length && paragraphs.items[i + 1].text.includes("\t")) {
+        alreadyHasToc = true;
+      }
+      break;
+    }
+  }
+
+  if (tocAnchorIndex !== -1 && !alreadyHasToc) {
+    try {
+      const tocOoxml =
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+        '<w:part><w:xmlData><w:p>' +
+        '<w:fldSimple w:instr="TOC \\o &quot;1-4&quot; \\h \\z \\u"/>' +
+        '</w:p></w:xmlData></w:part></w:pkg>';
+      paragraphs.items[tocAnchorIndex].insertOoxml(tocOoxml, Word.InsertLocation.after);
+      await context.sync();
+    } catch (e) {}
+  }
+}
+
+// V2.1 - 5. KIỂM TRA THỨ TỰ PHẦN ĐẦU LUẬN VĂN
+async function checkFrontMatterOrderNotice(context, doc) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  const orderKeys = [
+    { key: "LỜI CAM ĐOAN", pos: -1 },
+    { key: "LỜI CẢM ƠN", pos: -1 },
+    { key: "TÓM TẮT", pos: -1 },
+    { key: "MỤC LỤC", pos: -1 },
+    { key: "DANH MỤC", pos: -1 },
+    { key: "LỜI MỞ ĐẦU", pos: -1 }
+  ];
+
+  for (let i = 0; i < Math.min(paragraphs.items.length, 150); i++) {
+    const t = (paragraphs.items[i].text || "").trim().toUpperCase();
+    for (const item of orderKeys) {
+      if (item.pos === -1 && t.startsWith(item.key)) {
+        item.pos = i;
+      }
+    }
+  }
+
+  const found = orderKeys.filter(x => x.pos !== -1);
+  for (let i = 1; i < found.length; i++) {
+    if (found[i].pos < found[i - 1].pos) {
+      const statusEl = document.getElementById("status") || document.querySelector(".status-bar");
+      if (statusEl) {
+        statusEl.textContent = `⚠️ Gợi ý thứ tự phần đầu: "${found[i].key}" nên đặt sau "${found[i - 1].key}".`;
+      }
+      break;
+    }
+  }
+}
+
+// V2.2 - 1. CHUẨN HÓA TRÍCH DẪN (APA / IEEE / TCVN / GB-T / MLA) & TOC 3-4 CẤP
+async function applyCitationAndTocV22(context, doc, styleKey, tocDepth, cleanQuotes) {
+  const paragraphs = doc.body.paragraphs;
+  paragraphs.load("items, text");
+  await context.sync();
+
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const t = (paragraphs.items[i].text || "").trim();
+    if (/^MỤC LỤC$/i.test(t) && tocDepth === "1-3") {
+      try {
+        const toc3Ooxml =
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+          '<w:part><w:xmlData><w:p>' +
+          '<w:fldSimple w:instr="TOC \\o &quot;1-3&quot; \\h \\z \\u"/>' +
+          '</w:p></w:xmlData></w:part></w:pkg>';
+        paragraphs.items[i].insertOoxml(toc3Ooxml, Word.InsertLocation.after);
+      } catch (e) {}
+      break;
+    }
+  }
+  await context.sync();
+
+  let inRef = false;
+  const isNumberedStyle = (styleKey === "ieee" || styleKey === "tcvn7892" || styleKey === "gbt7714");
+
+  for (let i = 0; i < paragraphs.items.length; i++) {
+    const p = paragraphs.items[i];
+    const txt = (p.text || "").trim();
+
+    if (/^(TÀI LIỆU THAM KHẢO|DANH MỤC TÀI LIỆU THAM KHẢO|REFERENCES)/i.test(txt)) {
+      inRef = true;
+      continue;
+    }
+    if (inRef && /^(PHỤ LỤC|APPENDIX)/i.test(txt)) break;
+
+    if (inRef && txt.length > 8) {
+      try {
+        p.leftIndent = isNumberedStyle ? 24 : 36;
+        p.firstLineIndent = isNumberedStyle ? -24 : -36;
+        p.alignment = Word.Alignment.justified;
+
+        if (cleanQuotes && (txt.includes('"') || txt.includes("“") || txt.includes("”"))) {
+          const cleaned = txt.replace(/[“”"]/g, "");
+          p.insertText(cleaned, Word.InsertLocation.replace);
+        }
+      } catch (e) {}
+    }
+  }
+  await context.sync();
+}
+
+// V2.2 - 2. ĐÁNH SỐ TRANG 4 VỊ TRÍ QUA OOXML AN TOÀN CHO WORD MAC / LTSC
+async function applyPageNumberPositionOOXML(context, doc, posKey) {
+  const isTop = posKey.startsWith("top");
+  const alignVal = posKey.endsWith("right") ? "right" : "center";
+
+  const pageFieldOoxml =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+    `<w:part><w:xmlData><w:p><w:pPr><w:jc w:val="${alignVal}"/></w:pPr>` +
+    '<w:fldSimple w:instr="PAGE"/>' +
+    '</w:p></w:xmlData></w:part></w:pkg>';
+
+  try {
+    const sections = doc.sections;
+    sections.load("items");
+    await context.sync();
+
+    for (let i = 0; i < sections.items.length; i++) {
+      const sec = sections.items[i];
+      const targetArea = isTop
+        ? sec.getHeader(Word.HeaderFooterType.primary)
+        : sec.getFooter(Word.HeaderFooterType.primary);
+      targetArea.insertOoxml(pageFieldOoxml, Word.InsertLocation.end);
+    }
     await context.sync();
   } catch (e) {}
 }
