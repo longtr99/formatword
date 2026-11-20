@@ -224,6 +224,10 @@
     </label>
   </div>
 
+  <button type="button" onclick="runAdvancedOnly()" style="width:100%;margin-top:10px;padding:9px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+  ⚡ Chạy Nâng cao & Tự động hóa
+</button>
+<div id="statusAdv" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;"></div>
   </div>
 
   <!-- TAB 2: DỌN DẸP LỖI VĂN BẢN -->
@@ -343,6 +347,10 @@
     <input type="checkbox" id="optCheckFrontOrder" />
     <span>Kiểm tra thứ tự phần đầu (Lời cam đoan → Cảm ơn → Mục lục → Mở đầu)</span>
   </label>
+<button type="button" onclick="runAcademicV21Only()" style="width:100%;margin-top:10px;padding:9px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+  ⚡ Áp dụng Cỡ chữ Đề mục & Học thuật (V2.1)
+</button>
+<div id="statusV21" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;"></div>
 </div>
 
 <!-- BẢN CẬP NHẬT V2.2: CHUẨN TRÍCH DẪN & CẤU TRÚC MỤC LỤC -->
@@ -385,10 +393,12 @@
     <span>Tự động xóa ngoặc kép thừa quanh tên tài liệu tham khảo</span>
   </label>
 </div>
-
-  </div>
+<button type="button" onclick="runCitationV22Only()" style="width:100%;margin-top:10px;padding:9px 12px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+  ⚡ Áp dụng Trích dẫn & Cấu trúc Mục lục (V2.2)
+</button>
+<div id="statusV22" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;"></div></div>
 
   <div id="status" class="status"></div>
-  <script src="app.js?v=2.3"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>
