@@ -220,6 +220,101 @@
       <span>Căn chỉnh &amp; co giãn Ảnh/Bảng vừa vùng an toàn (15,5 cm dọc / 24,5 cm ngang)</span>
     </label>
   </div>
+    <!-- BẢN CẬP NHẬT V2.1: CỠ CHỮ ĐỀ MỤC & HỌC THUẬT -->
+<div class="card" style="margin-top: 10px;">
+  <div class="card-title"><span>CỠ CHỮ ĐỀ MỤC &amp; HỌC THUẬT (V2.1)</span></div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; font-size: 12px;">
+    <div>
+      <label>Heading 1 (pt)</label>
+      <input type="number" id="sizeH1" value="14" min="11" max="20" style="width: 100%;" />
+    </div>
+    <div>
+      <label>Heading 2 (pt)</label>
+      <input type="number" id="sizeH2" value="14" min="11" max="18" style="width: 100%;" />
+    </div>
+    <div>
+      <label>Heading 3 (pt)</label>
+      <input type="number" id="sizeH3" value="13" min="10" max="16" style="width: 100%;" />
+    </div>
+    <div>
+      <label>Chú thích (pt)</label>
+      <input type="number" id="sizeCaption" value="12" min="9" max="14" style="width: 100%;" />
+    </div>
+  </div>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optAutoToc" checked />
+    <span>Tự động tạo &amp; cập nhật Mục lục (TOC tối đa 4 cấp)</span>
+  </label>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optKeepLandscape" checked />
+    <span>Bảo lưu trang xoay ngang (Landscape 24,5 cm, không ép về dọc)</span>
+  </label>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optBoldCaptionLabel" checked />
+    <span>In đậm nhãn Bảng biểu &amp; Hình vẽ (VD: <b>Bảng 1.1</b>, <b>Hình 2.3</b>)</span>
+  </label>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optItalicCaptionDesc" />
+    <span>In nghiêng phần mô tả chú thích Bảng / Hình</span>
+  </label>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optRefHanging" />
+    <span>Chuẩn hóa Tài liệu tham khảo (Hanging indent 1,27 cm)</span>
+  </label>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optCheckFrontOrder" />
+    <span>Kiểm tra thứ tự phần đầu (Lời cam đoan → Cảm ơn → Mục lục → Mở đầu)</span>
+  </label>
+</div>
+
+<!-- BẢN CẬP NHẬT V2.2: CHUẨN TRÍCH DẪN & CẤU TRÚC MỤC LỤC -->
+<div class="card" style="margin-top: 10px;">
+  <div class="card-title"><span>TRÍCH DẪN &amp; CẤU TRÚC MỤC LỤC (V2.2)</span></div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; font-size: 12px;">
+    <div>
+      <label>Chuẩn trích dẫn</label>
+      <select id="citationStyleSelect" style="width: 100%;">
+        <option value="apa7" selected>APA 7th (Kinh tế &amp; Xã hội)</option>
+        <option value="ieee">IEEE [1], [2] (Kỹ thuật &amp; CNTT)</option>
+        <option value="tcvn7892">TCVN 7892 (Mẫu cổ điển)</option>
+        <option value="gbt7714">GB/T 7714 [1] (Tiếng Trung)</option>
+        <option value="mla9">MLA 9th (Ngôn ngữ &amp; Nhân văn)</option>
+      </select>
+    </div>
+    <div>
+      <label>Cấp độ Mục lục (TOC)</label>
+      <select id="tocDepthSelect" style="width: 100%;">
+        <option value="1-4" selected>Tối đa 4 cấp (Đến 1.1.1.1)</option>
+        <option value="1-3">Tối đa 3 cấp (Đến 1.1.1)</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 8px; font-size: 12px;">
+    <label>Vị trí đánh số trang (V2.2)</label>
+    <select id="pagePosV22" style="width: 100%;">
+      <option value="keep">Giữ theo lựa chọn bên trên</option>
+      <option value="bottom-center">Dưới giữa (TCVN, HUST, ĐHQG)</option>
+      <option value="bottom-right">Dưới góc phải (NEU, UEH)</option>
+      <option value="top-center">Trên giữa (FTU, HLU)</option>
+      <option value="top-right">Trên góc phải (Header Right)</option>
+    </select>
+  </div>
+
+  <label class="checkbox-row">
+    <input type="checkbox" id="optCleanRefQuotes" />
+    <span>Tự động xóa ngoặc kép thừa quanh tên tài liệu tham khảo</span>
+  </label>
+</div>
+
 
   </div>
 
