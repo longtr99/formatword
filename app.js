@@ -7,6 +7,15 @@ const PRESETS = {
     mTop: 2.5, mBottom: 2.5, mLeft: 3.5, mRight: 2.0,
     alignment: "Justified", pageNumPos: "bottom_center", hideFirstPage: true
   },
+    ufm_sdh: {
+    name: "UFM (Sau đại học) - Luận văn / Đề án Thạc sĩ",
+    desc: "Times New Roman • 13pt • Lề T3.5 - P2 - Tr3.5 - D3.0 cm • Giãn dòng 1.5",
+    fontFamily: "Times New Roman", fontSize: 13, lineSpacing: 1.5,
+    spaceBefore: 0, spaceAfter: 6, firstIndent: 1.27,
+    mTop: 3.5, mBottom: 3.0, mLeft: 3.5, mRight: 2.0,
+    alignment: "Justified", pageNumPos: "bottom_center", hideFirstPage: true
+  },
+
   ueh: {
     name: "UEH - Đại học Kinh tế TP.HCM",
     desc: "Times New Roman • 13pt • Lề T3.5 - P2 - Tr2.5 - D2.5 cm • Giãn dòng 1.5",
@@ -893,4 +902,86 @@ async function applyPageNumberPositionOOXML(context, doc, posKey) {
     await context.sync();
   } catch (e) {}
 }
+
+// =========================================================================
+// BỔ SUNG: HEADING 4 & CHÈN BÌA CHÍNH + PHỤ BÌA UFM (TÁCH SECTION KHÔNG SỐ TRANG)
+// =========================================================================
+async function applyHeadingQuick(level) {
+  try {
+    await Word.run(async (context) => {
+      const sel = context.document.getSelection();
+      const paras = sel.paragraphs;
+      paras.load("items");
+      await context.sync();
+
+      const fontName = document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman";
+
+      for (const p of paras.items) {
+        p.style = `Heading ${level}`;
+        p.font.name = fontName;
+        if (level === 1 || level === 2) {
+          p.font.size = 14;
+          p.font.bold = true;
+          p.font.italic = false;
+        } else if (level === 3) {
+          p.font.size = 13;
+          p.font.bold = true;
+          p.font.italic = true;
+        } else if (level === 4) {
+          p.font.size = 13;
+          p.font.bold = false;
+          p.font.italic = true;
+        }
+      }
+      await context.sync();
+      if (typeof showStatus === "function") {
+        showStatus(`✅ Đã gán Heading ${level} cho vùng chọn!`);
+      }
+    });
+  } catch (err) {
+    if (typeof showStatus === "function") {
+      showStatus("❌ Lỗi gán Heading: " + err.message, 4000);
+    }
+  }
+}
+
+async function insertUfmCovers() {
+  const escXml = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const author = escXml((document.getElementById("ufmAuthor")?.value || "HỌ VÀ TÊN TÁC GIẢ").toUpperCase());
+  const title = escXml((document.getElementById("ufmTitle")?.value || "TÊN ĐỀ TÀI LUẬN VĂN / ĐỀ ÁN").toUpperCase());
+  const docType = escXml((document.getElementById("ufmDocType")?.value || "LUẬN VĂN THẠC SĨ").toUpperCase());
+  const major = escXml(document.getElementById("ufmMajor")?.value || "Tài chính - Ngân hàng");
+  const track = escXml(document.getElementById("ufmTrack")?.value || "Định hướng ứng dụng");
+  const majorCode = escXml(document.getElementById("ufmMajorCode")?.value || "8340201");
+  const advisor = escXml(document.getElementById("ufmAdvisor")?.value || "Ghi học hàm, học vị, họ tên đầy đủ của người hướng dẫn");
+  const year = escXml(document.getElementById("ufmYear")?.value || "2026");
+
+  const makeBoxedCoverXml = (isSubCover) => {
+    const subMiddleXml = isSubCover
+      ? `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="360" w:after="60" w:line="320" w:lineRule="auto"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>Ngành đào tạo: ${major}</w:t></w:r></w:p>` +
+        `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="0" w:after="60" w:line="320" w:lineRule="auto"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>${track}</w:t></w:r></w:p>` +
+        `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="0" w:after="360" w:line="320" w:lineRule="auto"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>Mã ngành: ${majorCode}</w:t></w:r></w:p>`
+      : `<w:p><w:pPr><w:spacing w:before="600" w:after="600"/></w:pPr></w:p>`;
+
+    const advisorXml = isSubCover
+      ? `<w:p><w:pPr><w:ind w:left="360"/><w:spacing w:before="480" w:after="60"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>NGƯỜI HƯỚNG DẪN KHOA HỌC</w:t></w:r></w:p>` +
+        `<w:p><w:pPr><w:ind w:left="360"/><w:spacing w:before="0" w:after="720"/></w:pPr>` +
+        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${advisor}</w:t></w:r></w:p>`
+      : `<w:p><w:pPr><w:spacing w:before="720" w:after="720"/></w:pPr></w:p>`;
+
+    return (
+      `<w:tbl>` +
+      `<w:tblPr>` +
+      `<w:tblW w:w="9000" w:type="dxa"/>` +
+      `<w:jc w:val="center"/>` +
+      `<w:tblBorders>` +
+      `<w:top w:val="thinThickMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
+      `<w:left w:val="thinThickMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
+      `<w:bottom w:val="thickThinMediumGap" w:sz="24" w
+
 
