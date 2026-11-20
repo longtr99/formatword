@@ -131,6 +131,8 @@
       </label>
 
       <button class="btn btn-primary" onclick="applySelectedStandard()">⚡ Chuẩn hóa tài liệu ngay</button>
+      <div id="inlineResultBox" style="display: none; margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: #ecfdf5; border: 1px solid #10b981; color: #065f46; font-size: 12px; font-weight: 600; text-align: center;"></div>
+
     </div>
 
     <div class="card">
@@ -221,7 +223,75 @@
       <span>Căn chỉnh &amp; co giãn Ảnh/Bảng vừa vùng an toàn (15,5 cm dọc / 24,5 cm ngang)</span>
     </label>
   </div>
-    <!-- BẢN CẬP NHẬT V2.1: CỠ CHỮ ĐỀ MỤC & HỌC THUẬT -->
+
+  </div>
+
+  <!-- TAB 2: DỌN DẸP LỖI VĂN BẢN -->
+  <div id="tab-clean" class="panel">
+    <div class="card">
+      <div class="card-title">XỬ LÝ LỖI COPY/PASTE &amp; KHOẢNG TRẮNG</div>
+      <button class="btn btn-primary" onclick="cleanAllErrors()">🧹 Dọn dẹp tất cả lỗi phổ biến</button>
+      <button class="btn btn-outline btn-sm" onclick="removeDoubleSpaces()">Xóa khoảng trắng kép (2+ dấu cách → 1)</button>
+      <button class="btn btn-outline btn-sm" onclick="removeEmptyLines()">Xóa dòng trống thừa (Enter thừa)</button>
+      <button class="btn btn-outline btn-sm" onclick="fixPunctuationSpaces()">Chuẩn hóa dấu câu (. , ; : ! ?)</button>
+      <button class="btn btn-outline btn-sm" onclick="softBreakToParagraph()">Chuyển ngắt dòng mềm (Shift+Enter) → Enter</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">CHUYỂN ĐỔI CHỮ HOA / THƯỜNG (VÙNG CHỌN)</div>
+      <div class="grid-2">
+        <button class="btn btn-outline btn-sm" onclick="changeCase('UPPER')">CHỮ IN HOA</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('LOWER')">chữ in thường</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('TITLE')">Viết Hoa Đầu Từ</button>
+        <button class="btn btn-outline btn-sm" onclick="changeCase('SENTENCE')">Viết hoa đầu câu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: TRANG & MỤC LỤC -->
+  <div id="tab-layout" class="panel">
+    <div class="card">
+      <div class="card-title">GÁN NHANH HEADING TẠO MỤC LỤC (VÙNG CHỌN)</div>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(1)">Heading 1: IN HOA, ĐẬM (Chương 1, 2...)</button>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(2)">Heading 2: Chữ thường, ĐẬM (1.1, 1.2...)</button>
+      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(3)">Heading 3: Chữ thường, ĐẬM, NGHIÊNG (1.1.1...)</button>
+      <button class="btn-outline" onclick="applyHeadingQuick(4)">Heading 4: Chữ thường, NGHIÊNG (1.1.1.1...)</button>
+
+    </div>
+
+    <div class="card">
+      <div class="card-title">ĐÁNH SỐ TRANG &amp; XOAY HƯỚNG GIẤY</div>
+      <button class="btn btn-outline btn-sm" onclick="applyPageNumbersOnly()">🔢 Đánh số trang theo cấu hình đang chọn</button>
+      <div class="grid-2" style="margin-top:6px;">
+        <button class="btn btn-outline btn-sm" onclick="insertLandscapeSection()">➕ Ngắt sang trang Ngang</button>
+        <button class="btn btn-outline btn-sm" onclick="insertPortraitSection()">➕ Ngắt về trang Dọc</button>
+      </div>
+    </div>
+    <!-- TẠO NHANH BÌA CHÍNH & PHỤ BÌA UFM SAU ĐẠI HỌC (KHÔNG ĐÁNH SỐ TRANG) -->
+<div class="card" style="margin-top: 10px;">
+  <div class="card-title"><span>TẠO BÌA CHÍNH &amp; PHỤ BÌA UFM (SĐH)</span></div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 8px;">
+    <input type="text" id="ufmAuthor" placeholder="Họ và tên tác giả (VD: TRẦN CÔNG LONG)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <input type="text" id="ufmTitle" placeholder="Tên đề tài luận văn / đề án..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <select id="ufmDocType" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
+      <option value="LUẬN VĂN THẠC SĨ">LUẬN VĂN THẠC SĨ</option>
+      <option value="ĐỀ ÁN TỐT NGHIỆP">ĐỀ ÁN TỐT NGHIỆP</option>
+    </select>
+    <input type="text" id="ufmMajor" value="Tài chính - Ngân hàng" placeholder="Ngành đào tạo (VD: Tài chính - Ngân hàng)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+      <input type="text" id="ufmTrack" value="Định hướng ứng dụng" placeholder="Định hướng..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      <input type="text" id="ufmMajorCode" value="8340201" placeholder="Mã ngành (VD: 8340201)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    </div>
+    <input type="text" id="ufmAdvisor" placeholder="Người hướng dẫn khoa học (VD: PGS. TS. Nguyễn Văn A)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <input type="text" id="ufmYear" value="2026" placeholder="Năm (VD: 2026)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+  </div>
+
+  <button class="btn-primary" onclick="insertUfmCovers()" style="width: 100%; background: #1d4ed8; color: #fff; border: none; padding: 9px; border-radius: 6px; font-weight: 600; cursor: pointer;">
+    📄 Chèn Bìa chính + Phụ bìa UFM (Ẩn số trang bìa)
+  </button>
+</div>
+ <!-- BẢN CẬP NHẬT V2.1: CỠ CHỮ ĐỀ MỤC & HỌC THUẬT -->
 <div class="card" style="margin-top: 10px;">
   <div class="card-title"><span>CỠ CHỮ ĐỀ MỤC &amp; HỌC THUẬT (V2.1)</span></div>
 
@@ -314,75 +384,6 @@
     <input type="checkbox" id="optCleanRefQuotes" />
     <span>Tự động xóa ngoặc kép thừa quanh tên tài liệu tham khảo</span>
   </label>
-</div>
-
-
-  </div>
-
-  <!-- TAB 2: DỌN DẸP LỖI VĂN BẢN -->
-  <div id="tab-clean" class="panel">
-    <div class="card">
-      <div class="card-title">XỬ LÝ LỖI COPY/PASTE &amp; KHOẢNG TRẮNG</div>
-      <button class="btn btn-primary" onclick="cleanAllErrors()">🧹 Dọn dẹp tất cả lỗi phổ biến</button>
-      <button class="btn btn-outline btn-sm" onclick="removeDoubleSpaces()">Xóa khoảng trắng kép (2+ dấu cách → 1)</button>
-      <button class="btn btn-outline btn-sm" onclick="removeEmptyLines()">Xóa dòng trống thừa (Enter thừa)</button>
-      <button class="btn btn-outline btn-sm" onclick="fixPunctuationSpaces()">Chuẩn hóa dấu câu (. , ; : ! ?)</button>
-      <button class="btn btn-outline btn-sm" onclick="softBreakToParagraph()">Chuyển ngắt dòng mềm (Shift+Enter) → Enter</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">CHUYỂN ĐỔI CHỮ HOA / THƯỜNG (VÙNG CHỌN)</div>
-      <div class="grid-2">
-        <button class="btn btn-outline btn-sm" onclick="changeCase('UPPER')">CHỮ IN HOA</button>
-        <button class="btn btn-outline btn-sm" onclick="changeCase('LOWER')">chữ in thường</button>
-        <button class="btn btn-outline btn-sm" onclick="changeCase('TITLE')">Viết Hoa Đầu Từ</button>
-        <button class="btn btn-outline btn-sm" onclick="changeCase('SENTENCE')">Viết hoa đầu câu</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TAB 3: TRANG & MỤC LỤC -->
-  <div id="tab-layout" class="panel">
-    <div class="card">
-      <div class="card-title">GÁN NHANH HEADING TẠO MỤC LỤC (VÙNG CHỌN)</div>
-      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(1)">Heading 1: IN HOA, ĐẬM (Chương 1, 2...)</button>
-      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(2)">Heading 2: Chữ thường, ĐẬM (1.1, 1.2...)</button>
-      <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(3)">Heading 3: Chữ thường, ĐẬM, NGHIÊNG (1.1.1...)</button>
-      <button class="btn-outline" onclick="applyHeadingQuick(4)">Heading 4: Chữ thường, NGHIÊNG (1.1.1.1...)</button>
-
-    </div>
-
-    <div class="card">
-      <div class="card-title">ĐÁNH SỐ TRANG &amp; XOAY HƯỚNG GIẤY</div>
-      <button class="btn btn-outline btn-sm" onclick="applyPageNumbersOnly()">🔢 Đánh số trang theo cấu hình đang chọn</button>
-      <div class="grid-2" style="margin-top:6px;">
-        <button class="btn btn-outline btn-sm" onclick="insertLandscapeSection()">➕ Ngắt sang trang Ngang</button>
-        <button class="btn btn-outline btn-sm" onclick="insertPortraitSection()">➕ Ngắt về trang Dọc</button>
-      </div>
-    </div>
-    <!-- TẠO NHANH BÌA CHÍNH & PHỤ BÌA UFM SAU ĐẠI HỌC (KHÔNG ĐÁNH SỐ TRANG) -->
-<div class="card" style="margin-top: 10px;">
-  <div class="card-title"><span>TẠO BÌA CHÍNH &amp; PHỤ BÌA UFM (SĐH)</span></div>
-
-  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 8px;">
-    <input type="text" id="ufmAuthor" placeholder="Họ và tên tác giả (VD: TRẦN CÔNG LONG)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    <input type="text" id="ufmTitle" placeholder="Tên đề tài luận văn / đề án..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    <select id="ufmDocType" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
-      <option value="LUẬN VĂN THẠC SĨ">LUẬN VĂN THẠC SĨ</option>
-      <option value="ĐỀ ÁN TỐT NGHIỆP">ĐỀ ÁN TỐT NGHIỆP</option>
-    </select>
-    <input type="text" id="ufmMajor" value="Tài chính - Ngân hàng" placeholder="Ngành đào tạo (VD: Tài chính - Ngân hàng)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-      <input type="text" id="ufmTrack" value="Định hướng ứng dụng" placeholder="Định hướng..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-      <input type="text" id="ufmMajorCode" value="8340201" placeholder="Mã ngành (VD: 8340201)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    </div>
-    <input type="text" id="ufmAdvisor" placeholder="Người hướng dẫn khoa học (VD: PGS. TS. Nguyễn Văn A)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-    <input type="text" id="ufmYear" value="2026" placeholder="Năm (VD: 2026)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
-  </div>
-
-  <button class="btn-primary" onclick="insertUfmCovers()" style="width: 100%; background: #1d4ed8; color: #fff; border: none; padding: 9px; border-radius: 6px; font-weight: 600; cursor: pointer;">
-    📄 Chèn Bìa chính + Phụ bìa UFM (Ẩn số trang bìa)
-  </button>
 </div>
 
   </div>
