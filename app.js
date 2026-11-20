@@ -238,66 +238,73 @@ async function applySelectedStandard() {
     if (document.getElementById("optPageNumber").checked) {
       await applyPageNumbersOnly(true);
     }
-const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
-const optRomanPages = document.getElementById("optRomanPages")?.checked;
-const optAutoCaption = document.getElementById("optAutoCaption")?.checked;
-const optFitMedia = document.getElementById("optFitMedia")?.checked;
+await Word.run(async (context) => {
+      const doc = context.document;
 
-const activeFont = document.getElementById("fontSelect")?.value || "Times New Roman";
-const activeSize = parseFloat(document.getElementById("fontSizeInput")?.value) || 13;
+      const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
+      const optRomanPages = document.getElementById("optRomanPages")?.checked;
+      const optAutoCaption = document.getElementById("optAutoCaption")?.checked;
+      const optFitMedia = document.getElementById("optFitMedia")?.checked;
 
-if (optCleanAiWeb) {
-  await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
-}
-if (optFitMedia) {
-  await fitImagesAndTablesSafe(context, doc);
-}
-if (optAutoCaption) {
-  await autoGenerateCaptions(context, doc);
-}
-if (optRomanPages) {
-  await applyRomanHeaderFooterBeforeChapter1(context, doc);
-}
-// Chạy bổ sung V2.1 (Heading, Landscape, Chú thích, Tài liệu tham khảo, Mục lục)
-const optAutoToc = document.getElementById("optAutoToc")?.checked;
-const optKeepLandscape = document.getElementById("optKeepLandscape")?.checked;
-const optBoldCaptionLabel = document.getElementById("optBoldCaptionLabel")?.checked;
-const optItalicCaptionDesc = document.getElementById("optItalicCaptionDesc")?.checked;
-const optRefHanging = document.getElementById("optRefHanging")?.checked;
-const optCheckFrontOrder = document.getElementById("optCheckFrontOrder")?.checked;
+      const activeFont = document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman";
+      const activeSize = parseFloat(document.getElementById("fontSize")?.value || document.getElementById("fontSizeInput")?.value) || 13;
 
-const hSizes = {
-  h1: parseFloat(document.getElementById("sizeH1")?.value) || 14,
-  h2: parseFloat(document.getElementById("sizeH2")?.value) || 14,
-  h3: parseFloat(document.getElementById("sizeH3")?.value) || 13,
-  cap: parseFloat(document.getElementById("sizeCaption")?.value) || 12
-};
+      if (optCleanAiWeb) {
+        await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
+      }
+      if (optFitMedia) {
+        await fitImagesAndTablesSafe(context, doc);
+      }
+      if (optAutoCaption) {
+        await autoGenerateCaptions(context, doc);
+      }
+      if (optRomanPages) {
+        await applyRomanHeaderFooterBeforeChapter1(context, doc);
+      }
 
-await applyHeadingAndCaptionSizes(context, doc, activeFont, hSizes, optBoldCaptionLabel, optItalicCaptionDesc);
+      // Chạy bổ sung V2.1 (Heading, Landscape, Chú thích, Tài liệu tham khảo, Mục lục)
+      const optAutoToc = document.getElementById("optAutoToc")?.checked;
+      const optKeepLandscape = document.getElementById("optKeepLandscape")?.checked;
+      const optBoldCaptionLabel = document.getElementById("optBoldCaptionLabel")?.checked;
+      const optItalicCaptionDesc = document.getElementById("optItalicCaptionDesc")?.checked;
+      const optRefHanging = document.getElementById("optRefHanging")?.checked;
+      const optCheckFrontOrder = document.getElementById("optCheckFrontOrder")?.checked;
 
-if (optKeepLandscape) {
-  await fitLandscapeAwareMedia(context, doc);
-}
-if (optRefHanging) {
-  await formatReferencesHangingIndent(context, doc);
-}
-if (optAutoToc) {
-  await insertOrUpdateAcademicToc(context, doc);
-}
-if (optCheckFrontOrder) {
-  await checkFrontMatterOrderNotice(context, doc);
-}
+      const hSizes = {
+        h1: parseFloat(document.getElementById("sizeH1")?.value) || 14,
+        h2: parseFloat(document.getElementById("sizeH2")?.value) || 14,
+        h3: parseFloat(document.getElementById("sizeH3")?.value) || 13,
+        cap: parseFloat(document.getElementById("sizeCaption")?.value) || 12
+      };
 
-// Chạy bổ sung V2.2 (Chuẩn trích dẫn, TOC 3/4 cấp, Vị trí số trang V2.2)
-const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
-const tocDepth = document.getElementById("tocDepthSelect")?.value || "1-4";
-const pagePosV22 = document.getElementById("pagePosV22")?.value || "keep";
-const optCleanRefQuotes = document.getElementById("optCleanRefQuotes")?.checked;
+      await applyHeadingAndCaptionSizes(context, doc, activeFont, hSizes, optBoldCaptionLabel, optItalicCaptionDesc);
 
-await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQuotes);
-if (pagePosV22 !== "keep") {
-  await applyPageNumberPositionOOXML(context, doc, pagePosV22);
-}
+      if (optKeepLandscape) {
+        await fitLandscapeAwareMedia(context, doc);
+      }
+      if (optRefHanging) {
+        await formatReferencesHangingIndent(context, doc);
+      }
+      if (optAutoToc) {
+        await insertOrUpdateAcademicToc(context, doc);
+      }
+      if (optCheckFrontOrder) {
+        await checkFrontMatterOrderNotice(context, doc);
+      }
+
+      // Chạy bổ sung V2.2 (Chuẩn trích dẫn, TOC 3/4 cấp, Vị trí số trang V2.2)
+      const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
+      const tocDepth = document.getElementById("tocDepthSelect")?.value || "1-4";
+      const pagePosV22 = document.getElementById("pagePosV22")?.value || "keep";
+      const optCleanRefQuotes = document.getElementById("optCleanRefQuotes")?.checked;
+
+      await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQuotes);
+      if (pagePosV22 !== "keep") {
+        await applyPageNumberPositionOOXML(context, doc, pagePosV22);
+      }
+
+      await context.sync();
+    });
   
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
