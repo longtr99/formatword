@@ -298,7 +298,7 @@ await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQ
 if (pagePosV22 !== "keep") {
   await applyPageNumberPositionOOXML(context, doc, pagePosV22);
 }
-    });
+  
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
