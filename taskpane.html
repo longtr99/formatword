@@ -81,6 +81,7 @@
   <option value="tap_chi_ld">📖 Tạp chí L&D / Nghiên cứu tự do & Quốc tế</option>
   <option value="tieu_chuan_dh">🎓 Tiêu chuẩn ĐH — Đồ án / Khóa luận chung</option>
   <option value="ufm">UFM - Trường Đại học Tài chính - Marketing</option>
+  <option value="ufm_sdh">UFM (Sau đại học) - Luận văn / Đề án Thạc sĩ (QT/SĐH/05/06)</option>
   <option value="ueh">UEH - Đại học Kinh tế TP.HCM</option>
   <option value="ftu">FTU - Trường Đại học Ngoại thương</option>
   <option value="neu">NEU - Đại học Kinh tế Quốc dân</option>
@@ -347,6 +348,8 @@
       <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(1)">Heading 1: IN HOA, ĐẬM (Chương 1, 2...)</button>
       <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(2)">Heading 2: Chữ thường, ĐẬM (1.1, 1.2...)</button>
       <button class="btn btn-outline btn-sm" onclick="applyHeadingStyle(3)">Heading 3: Chữ thường, ĐẬM, NGHIÊNG (1.1.1...)</button>
+      <button class="btn-outline" onclick="applyHeadingQuick(4)">Heading 4: Chữ thường, NGHIÊNG (1.1.1.1...)</button>
+
     </div>
 
     <div class="card">
@@ -357,6 +360,31 @@
         <button class="btn btn-outline btn-sm" onclick="insertPortraitSection()">➕ Ngắt về trang Dọc</button>
       </div>
     </div>
+    <!-- TẠO NHANH BÌA CHÍNH & PHỤ BÌA UFM SAU ĐẠI HỌC (KHÔNG ĐÁNH SỐ TRANG) -->
+<div class="card" style="margin-top: 10px;">
+  <div class="card-title"><span>TẠO BÌA CHÍNH &amp; PHỤ BÌA UFM (SĐH)</span></div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; margin-bottom: 8px;">
+    <input type="text" id="ufmAuthor" placeholder="Họ và tên tác giả (VD: TRẦN CÔNG LONG)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <input type="text" id="ufmTitle" placeholder="Tên đề tài luận văn / đề án..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <select id="ufmDocType" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;">
+      <option value="LUẬN VĂN THẠC SĨ">LUẬN VĂN THẠC SĨ</option>
+      <option value="ĐỀ ÁN TỐT NGHIỆP">ĐỀ ÁN TỐT NGHIỆP</option>
+    </select>
+    <input type="text" id="ufmMajor" value="Tài chính - Ngân hàng" placeholder="Ngành đào tạo (VD: Tài chính - Ngân hàng)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+      <input type="text" id="ufmTrack" value="Định hướng ứng dụng" placeholder="Định hướng..." style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+      <input type="text" id="ufmMajorCode" value="8340201" placeholder="Mã ngành (VD: 8340201)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    </div>
+    <input type="text" id="ufmAdvisor" placeholder="Người hướng dẫn khoa học (VD: PGS. TS. Nguyễn Văn A)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+    <input type="text" id="ufmYear" value="2026" placeholder="Năm (VD: 2026)" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px;" />
+  </div>
+
+  <button class="btn-primary" onclick="insertUfmCovers()" style="width: 100%; background: #1d4ed8; color: #fff; border: none; padding: 9px; border-radius: 6px; font-weight: 600; cursor: pointer;">
+    📄 Chèn Bìa chính + Phụ bìa UFM (Ẩn số trang bìa)
+  </button>
+</div>
+
   </div>
 
   <div id="status" class="status"></div>
