@@ -1020,13 +1020,18 @@ async function insertUfmCovers() {
 
   const fullCoversOoxml =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-    '<w:part><w:xmlData>' +
+    '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+    '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+    '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+    '</Relationships></pkg:xmlData></pkg:part>' +
+    '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+    '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
     makeBoxedCoverXml(false) +
     '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' +
     makeBoxedCoverXml(true) +
     '<w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/></w:sectPr></w:pPr></w:p>' +
-    '</w:xmlData></w:part></w:pkg>';
+    '</w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
 
   try {
     await Word.run(async (context) => {
@@ -1066,10 +1071,16 @@ async function applyPageNumberPositionOOXML(context, doc, posKey) {
 
   const pageFieldOoxml =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-    `<w:part><w:xmlData><w:p><w:pPr><w:jc w:val="${alignVal}"/></w:pPr>` +
+    '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+    '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+    '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+    '</Relationships></pkg:xmlData></pkg:part>' +
+    '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+    '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+    `<w:p><w:pPr><w:jc w:val="${alignVal}"/></w:pPr>` +
     '<w:fldSimple w:instr="PAGE"/>' +
-    '</w:p></w:xmlData></w:part></w:pkg>';
+    '</w:p></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
 
   try {
     const firstPara = doc.body.paragraphs.getFirst();
