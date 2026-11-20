@@ -313,39 +313,70 @@ async function applyPageNumbersOnly(silent = false) {
     const presetKey = document.getElementById("presetSelect").value;
     const hideFirst = presetKey === "apa7" ? false : true;
 
-    const firstSection = context.document.sections.getFirst();
-    firstSection.pageSetup.differentFirstPageHeaderFooter = hideFirst;
+    const sections = context.document.sections;
+    sections.load("items");
+    const tables = context.document.body.tables;
+    tables.load("items");
+    await context.sync();
 
-    const header = firstSection.getHeader(Word.HeaderFooterType.primary);
-    const footer = firstSection.getFooter(Word.HeaderFooterType.primary);
-    header.clear();
-    footer.clear();
-
-    let targetContainer = footer;
-    let align = Word.Alignment.centered;
-
-    if (pos === "top_center") {
-      targetContainer = header;
-      align = Word.Alignment.centered;
-    } else if (pos === "top_right") {
-      targetContainer = header;
-      align = Word.Alignment.right;
+    let hasUfmCover = false;
+    if (tables.items.length > 0) {
+      const firstCellText = tables.items[0].getCell(0, 0).body;
+      firstCellText.load("text");
+      await context.sync();
+      hasUfmCover = (firstCellText.text || "").toUpperCase().includes("BỘ TÀI CHÍNH");
     }
 
-    const p = targetContainer.insertParagraph("", Word.InsertLocation.start);
-    p.alignment = align;
-    p.font.name = fontFamily;
-    p.font.size = 12;
-    if (typeof p.insertField === "function") {
-  p.insertField(Word.InsertLocation.end, Word.FieldType.page);
-} else {
-  const pageOoxml = '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage"><pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml"><pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships></pkg:xmlData></pkg:part><pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"><pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
-  p.insertOoxml(pageOoxml, Word.InsertLocation.end);
-}
+    const startIdx = (hasUfmCover && sections.items.length > 1) ? 1 : 0;
+
+    if (hasUfmCover && sections.items.length > 0) {
+      const coverSec = sections.items[0];
+      coverSec.getHeader(Word.HeaderFooterType.primary).clear();
+      coverSec.getFooter(Word.HeaderFooterType.primary).clear();
+      coverSec.getHeader(Word.HeaderFooterType.firstPage).clear();
+      coverSec.getFooter(Word.HeaderFooterType.firstPage).clear();
+    }
+
+    for (let i = startIdx; i < sections.items.length; i++) {
+      const sec = sections.items[i];
+      sec.pageSetup.differentFirstPageHeaderFooter = (i === 0) ? hideFirst : false;
+
+      const header = sec.getHeader(Word.HeaderFooterType.primary);
+      const footer = sec.getFooter(Word.HeaderFooterType.primary);
+      if (i > 0) {
+        try { header.isLinkedToPrevious = false; } catch (e) {}
+        try { footer.isLinkedToPrevious = false; } catch (e) {}
+      }
+      header.clear();
+      footer.clear();
+
+      let targetContainer = footer;
+      let align = Word.Alignment.centered;
+      if (pos === "top_center") {
+        targetContainer = header;
+        align = Word.Alignment.centered;
+      } else if (pos === "top_right") {
+        targetContainer = header;
+        align = Word.Alignment.right;
+      }
+
+      const p = targetContainer.insertParagraph("", Word.InsertLocation.start);
+      p.alignment = align;
+      p.font.name = fontFamily;
+      p.font.size = 12;
+      if (typeof p.insertField === "function") {
+        p.insertField(Word.InsertLocation.end, Word.FieldType.page);
+      } else {
+        const pageOoxml = '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage"><pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml"><pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships></pkg:xmlData></pkg:part><pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"><pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:fldSimple w:instr="PAGE"/></w:p></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
+        p.insertOoxml(pageOoxml, Word.InsertLocation.end);
+      }
+    }
+
     await context.sync();
-    if (!silent) showStatus("✅ Đã cập nhật đánh số trang!");
+    if (!silent) showStatus("✅ Đã cập nhật đánh số trang (ẩn số trang ở 2 trang bìa)!");
   });
 }
+
 
 async function runSilentClean() {
   await Word.run(async (context) => {
@@ -958,104 +989,125 @@ async function applyHeadingQuick(level) {
 }
 
 async function insertUfmCovers() {
-  const escXml = (s) => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const author = (document.getElementById("ufmAuthor")?.value || "HỌ VÀ TÊN TÁC GIẢ").toUpperCase();
+  const title = (document.getElementById("ufmTitle")?.value || "TÊN ĐỀ TÀI LUẬN VĂN / ĐỀ ÁN").toUpperCase();
+  const docType = (document.getElementById("ufmDocType")?.value || "LUẬN VĂN THẠC SĨ").toUpperCase();
+  const major = document.getElementById("ufmMajor")?.value || "Tài chính - Ngân hàng";
+  const track = document.getElementById("ufmTrack")?.value || "Định hướng ứng dụng";
+  const majorCode = document.getElementById("ufmMajorCode")?.value || "8340201";
+  const advisor = document.getElementById("ufmAdvisor")?.value || "Ghi học hàm, học vị, họ tên đầy đủ của người hướng dẫn";
+  const year = document.getElementById("ufmYear")?.value || "2026";
 
-  const author = escXml((document.getElementById("ufmAuthor")?.value || "HỌ VÀ TÊN TÁC GIẢ").toUpperCase());
-  const title = escXml((document.getElementById("ufmTitle")?.value || "TÊN ĐỀ TÀI LUẬN VĂN / ĐỀ ÁN").toUpperCase());
-  const docType = escXml((document.getElementById("ufmDocType")?.value || "LUẬN VĂN THẠC SĨ").toUpperCase());
-  const major = escXml(document.getElementById("ufmMajor")?.value || "Tài chính - Ngân hàng");
-  const track = escXml(document.getElementById("ufmTrack")?.value || "Định hướng ứng dụng");
-  const majorCode = escXml(document.getElementById("ufmMajorCode")?.value || "8340201");
-  const advisor = escXml(document.getElementById("ufmAdvisor")?.value || "Ghi học hàm, học vị, họ tên đầy đủ của người hướng dẫn");
-  const year = escXml(document.getElementById("ufmYear")?.value || "2026");
+  const buildCoverPage = (body, isSubCover) => {
+    const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[""]]);
+    tbl.alignment = Word.Alignment.centered;
+    tbl.width = 450;
 
-  const makeBoxedCoverXml = (isSubCover) => {
-    const subMiddleXml = isSubCover
-      ? `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="360" w:after="60" w:line="320" w:lineRule="auto"/></w:pPr>` +
-        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>Ngành đào tạo: ${major}</w:t></w:r></w:p>` +
-        `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="0" w:after="60" w:line="320" w:lineRule="auto"/></w:pPr>` +
-        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>${track}</w:t></w:r></w:p>` +
-        `<w:p><w:pPr><w:ind w:left="2200"/><w:spacing w:before="0" w:after="360" w:line="320" w:lineRule="auto"/></w:pPr>` +
-        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="26"/></w:rPr><w:t>Mã ngành: ${majorCode}</w:t></w:r></w:p>`
-      : `<w:p><w:pPr><w:spacing w:before="600" w:after="600"/></w:pPr></w:p>`;
+    [
+      Word.BorderLocation.top,
+      Word.BorderLocation.bottom,
+      Word.BorderLocation.left,
+      Word.BorderLocation.right
+    ].forEach((loc) => {
+      const b = tbl.getBorder(loc);
+      b.type = Word.BorderType.double;
+      b.width = 1.5;
+      b.color = "#000000";
+    });
 
-    const advisorXml = isSubCover
-      ? `<w:p><w:pPr><w:ind w:left="360"/><w:spacing w:before="480" w:after="60"/></w:pPr>` +
-        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>NGƯỜI HƯỚNG DẪN KHOA HỌC</w:t></w:r></w:p>` +
-        `<w:p><w:pPr><w:ind w:left="360"/><w:spacing w:before="0" w:after="720"/></w:pPr>` +
-        `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/></w:rPr><w:t>${advisor}</w:t></w:r></w:p>`
-      : `<w:p><w:pPr><w:spacing w:before="720" w:after="720"/></w:pPr></w:p>`;
+    const cell = tbl.getCell(0, 0);
+    cell.setCellPadding(Word.CellPaddingLocation.top, 24);
+    cell.setCellPadding(Word.CellPaddingLocation.bottom, 24);
+    cell.setCellPadding(Word.CellPaddingLocation.left, 20);
+    cell.setCellPadding(Word.CellPaddingLocation.right, 20);
 
-    return (
-      `<w:tbl>` +
-      `<w:tblPr>` +
-      `<w:tblW w:w="9000" w:type="dxa"/>` +
-      `<w:jc w:val="center"/>` +
-      `<w:tblBorders>` +
-      `<w:top w:val="thinThickMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
-      `<w:left w:val="thinThickMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
-      `<w:bottom w:val="thickThinMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
-      `<w:right w:val="thickThinMediumGap" w:sz="24" w:space="0" w:color="000000"/>` +
-      `</w:tblBorders>` +
-      `<w:tblCellMar><w:top w:w="360" w:type="dxa"/><w:left w:w="280" w:type="dxa"/><w:bottom w:w="360" w:type="dxa"/><w:right w:w="280" w:type="dxa"/></w:tblCellMar>` +
-      `</w:tblPr>` +
-      `<w:tr><w:trPr><w:trHeight w:val="13200" w:hRule="atLeast"/></w:trPr><w:tc>` +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="120" w:after="60"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>BỘ TÀI CHÍNH</w:t></w:r></w:p>` +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="900"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="30"/></w:rPr><w:t>TRƯỜNG ĐẠI HỌC TÀI CHÍNH - MARKETING</w:t></w:r></w:p>` +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="240" w:after="900"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>${author}</w:t></w:r></w:p>` +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="240" w:after="720"/><w:line="360"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="32"/></w:rPr><w:t>${title}</w:t></w:r></w:p>` +
-      subMiddleXml +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="360" w:after="360"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="30"/></w:rPr><w:t>${docType}</w:t></w:r></w:p>` +
-      advisorXml +
-      `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="480" w:after="120"/></w:pPr>` +
-      `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>Thành phố Hồ Chí Minh – ${year}</w:t></w:r></w:p>` +
-      `</w:tc></w:tr></w:tbl>`
-    );
+    const addLine = (text, size, bold, align, spaceBefore, spaceAfter, leftIndent = 0) => {
+      const p = cell.body.insertParagraph(text, Word.InsertLocation.end);
+      p.font.name = "Times New Roman";
+      p.font.size = size;
+      p.font.bold = bold;
+      p.alignment = align;
+      p.spaceBefore = spaceBefore;
+      p.spaceAfter = spaceAfter;
+      p.lineSpacing = 1.3;
+      if (leftIndent > 0) p.leftIndent = leftIndent;
+      return p;
+    };
+
+    const firstEmpty = cell.body.paragraphs.getFirst();
+    firstEmpty.delete();
+
+    addLine("BỘ TÀI CHÍNH", 14, true, Word.Alignment.centered, 6, 4);
+    addLine("TRƯỜNG ĐẠI HỌC TÀI CHÍNH - MARKETING", 15, true, Word.Alignment.centered, 0, 56);
+    addLine(author, 14, true, Word.Alignment.centered, 12, 56);
+    addLine(title, 16, true, Word.Alignment.centered, 12, isSubCover ? 24 : 48);
+
+    if (isSubCover) {
+      addLine(`Ngành đào tạo: ${major}`, 13, false, Word.Alignment.left, 8, 4, 110);
+      addLine(track, 13, false, Word.Alignment.left, 0, 4, 110);
+      addLine(`Mã ngành: ${majorCode}`, 13, false, Word.Alignment.left, 0, 28, 110);
+    } else {
+      addLine("", 13, false, Word.Alignment.centered, 24, 36);
+    }
+
+    addLine(docType, 15, true, Word.Alignment.centered, 16, 24);
+
+    if (isSubCover) {
+      addLine("NGƯỜI HƯỚNG DẪN KHOA HỌC", 14, false, Word.Alignment.left, 24, 4, 24);
+      addLine(advisor, 14, false, Word.Alignment.left, 0, 48, 24);
+    } else {
+      addLine("", 14, false, Word.Alignment.centered, 36, 48);
+    }
+
+    addLine(`Thành phố Hồ Chí Minh – ${year}`, 14, true, Word.Alignment.centered, 24, 6);
   };
-
-  const fullCoversOoxml =
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
-    '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
-    '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
-    '</Relationships></pkg:xmlData></pkg:part>' +
-    '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
-    '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
-    makeBoxedCoverXml(false) +
-    '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' +
-    makeBoxedCoverXml(true) +
-    '<w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/></w:sectPr></w:pPr></w:p>' +
-    '</w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
 
   try {
     await Word.run(async (context) => {
-      const doc = context.document;
-      doc.body.insertOoxml(fullCoversOoxml, Word.InsertLocation.start);
+      const body = context.document.body;
+
+      // Ngắt Section riêng cho 2 trang bìa và phần nội dung
+      body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
+      buildCoverPage(body, true);
+      body.insertBreak(Word.BreakType.page, Word.InsertLocation.start);
+      buildCoverPage(body, false);
       await context.sync();
 
-      const sections = doc.sections;
+      const sections = context.document.sections;
       sections.load("items");
       await context.sync();
 
+      // 1. Xóa sạch toàn bộ Header/Footer của Section 0 (Bìa chính + Phụ bìa)
       if (sections.items.length > 0) {
         const coverSec = sections.items[0];
-        coverSec.getHeader(Word.HeaderFooterType.primary).clear();
-        coverSec.getFooter(Word.HeaderFooterType.primary).clear();
-        coverSec.getHeader(Word.HeaderFooterType.firstPage).clear();
-        coverSec.getFooter(Word.HeaderFooterType.firstPage).clear();
-        coverSec.getHeader(Word.HeaderFooterType.evenPages).clear();
-        coverSec.getFooter(Word.HeaderFooterType.evenPages).clear();
-        await context.sync();
+        coverSec.pageSetup.differentFirstPageHeaderFooter = false;
+        [
+          Word.HeaderFooterType.primary,
+          Word.HeaderFooterType.firstPage,
+          Word.HeaderFooterType.evenPages
+        ].forEach((type) => {
+          coverSec.getHeader(type).clear();
+          coverSec.getFooter(type).clear();
+        });
       }
 
+      // 2. Ngắt liên kết (Link to Previous = false) ở Section 1 để số trang nội dung không tràn lên 2 trang bìa
+      if (sections.items.length > 1) {
+        const contentSec = sections.items[1];
+        [
+          Word.HeaderFooterType.primary,
+          Word.HeaderFooterType.firstPage,
+          Word.HeaderFooterType.evenPages
+        ].forEach((type) => {
+          try { contentSec.getHeader(type).isLinkedToPrevious = false; } catch (e) {}
+          try { contentSec.getFooter(type).isLinkedToPrevious = false; } catch (e) {}
+        });
+      }
+
+      await context.sync();
+
       if (typeof showStatus === "function") {
-        showStatus("✅ Đã chèn Bìa chính + Phụ bìa UFM (đã ẩn hoàn toàn số trang ở bìa)!");
+        showStatus("✅ Đã chèn Bìa chính + Phụ bìa UFM (đã khóa ẩn hoàn toàn số trang ở 2 trang bìa)!");
       }
     });
   } catch (err) {
@@ -1064,6 +1116,7 @@ async function insertUfmCovers() {
     }
   }
 }
+
 
 async function applyPageNumberPositionOOXML(context, doc, posKey) {
   const isTop = posKey.startsWith("top");
