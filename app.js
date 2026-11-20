@@ -1193,7 +1193,7 @@ async function insertUfmCovers() {
     const advisor = (document.getElementById("ufmAdvisor")?.value || "........................................").trim();
     const year = (document.getElementById("ufmYear")?.value || "2026").trim();
 
-    showBoxStatus("statusCover", "⏳ Đang chèn Bìa chính & Phụ bìa UFM...");
+    showBoxStatus("statusCover", "⏳ Đang chèn / cập nhật Bìa chính & Phụ bìa UFM...");
 
     const escapeXml = (str) =>
       String(str || "")
@@ -1311,33 +1311,63 @@ async function insertUfmCovers() {
         '</pkg:part>' +
       '</pkg:package>';
 
+    let isUpdated = false;
+
     await Word.run(async (context) => {
       const doc = context.document;
       const body = doc.body;
 
-      // 1. Tách Section riêng cho 2 trang bìa
-      body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
+      // Kiểm tra xem Section 0 đã là Section bìa UFM chưa
+      const startIdx = await getContentStartSectionIndex(context, doc);
+      const existingSections = doc.sections;
+      existingSections.load("items");
       await context.sync();
 
-      // 2. Chèn trọn bộ Bìa chính + ngắt trang + Phụ bìa (tất cả nằm trong khung viền kép)
-      body.insertOoxml(fullCoversOoxml, Word.InsertLocation.start);
-      await context.sync();
+      if (startIdx > 0 && existingSections.items.length > 1) {
+        // ĐÃ CÓ BÌA -> Xóa nội dung cũ trong Section bìa và ghi đè thông tin mới
+        isUpdated = true;
+        const coverBody = existingSections.items[0].body;
+        coverBody.clear();
+        await context.sync();
 
-      // 3. Ngắt liên kết header/footer phần nội dung rồi ẩn số trang ở Section bìa
+        coverBody.insertOoxml(fullCoversOoxml, Word.InsertLocation.start);
+        await context.sync();
+      } else {
+        // CHƯA CÓ BÌA -> Tạo Section riêng rồi chèn mới 2 trang bìa
+        body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
+        await context.sync();
+
+        body.insertOoxml(fullCoversOoxml, Word.InsertLocation.start);
+        await context.sync();
+      }
+
+      // Tải lại danh sách Section để ẩn số trang bìa và thu gọn dòng trống thừa cuối bìa
       const sections = doc.sections;
       sections.load("items");
       await context.sync();
 
-      if (sections.items.length > 1) {
-        try {
-          sections.items[1].getHeader(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
-          sections.items[1].getFooter(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
-        } catch (e) {}
-        await context.sync();
-      }
-
       if (sections.items.length > 0) {
         const coverSec = sections.items[0];
+        try {
+          const lastP = coverSec.body.paragraphs.getLast();
+          lastP.load("text");
+          await context.sync();
+          if ((lastP.text || "").trim() === "") {
+            lastP.font.size = 2;
+            lastP.spaceBefore = 0;
+            lastP.spaceAfter = 0;
+            await context.sync();
+          }
+        } catch (e) {}
+
+        if (sections.items.length > 1) {
+          try {
+            sections.items[1].getHeader(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
+            sections.items[1].getFooter(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
+          } catch (e) {}
+          await context.sync();
+        }
+
         coverSec.getHeader(Word.HeaderFooterType.primary).clear();
         coverSec.getFooter(Word.HeaderFooterType.primary).clear();
         coverSec.getHeader(Word.HeaderFooterType.firstPage).clear();
@@ -1346,12 +1376,16 @@ async function insertUfmCovers() {
       }
     });
 
-    showBoxStatus("statusCover", "✅ Đã chèn Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!");
+    showBoxStatus(
+      "statusCover",
+      isUpdated
+        ? "✅ Đã cập nhật thông tin mới lên 2 trang bìa UFM (không bị trùng)!"
+        : "✅ Đã chèn mới Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!"
+    );
   } catch (err) {
     showBoxStatus("statusCover", "❌ Lỗi chèn bìa (dòng " + (err.line || "?") + "): " + err.message, true);
   }
 }
-
 // Gắn toàn bộ hàm xử lý nút ra global window
 window.switchTab = switchTab;
 window.selectPreset = selectPreset;
