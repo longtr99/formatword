@@ -1154,3 +1154,138 @@ async function runCitationV22Only() {
 window.runAdvancedOnly = runAdvancedOnly;
 window.runAcademicV21Only = runAcademicV21Only;
 window.runCitationV22Only = runCitationV22Only;
+async function insertUfmCovers() {
+  try {
+    const author = (document.getElementById("ufmAuthor")?.value || "HỌ VÀ TÊN TÁC GIẢ").trim().toUpperCase();
+    const title = (document.getElementById("ufmTitle")?.value || "TÊN ĐỀ TÀI LUẬN VĂN").trim().toUpperCase();
+    const docType = (document.getElementById("ufmDocType")?.value || "LUẬN VĂN THẠC SĨ").trim().toUpperCase();
+    const major = (document.getElementById("ufmMajor")?.value || "Tài chính - Ngân hàng").trim();
+    const track = (document.getElementById("ufmTrack")?.value || "").trim();
+    const majorCode = (document.getElementById("ufmMajorCode")?.value || "8340201").trim();
+    const advisor = (document.getElementById("ufmAdvisor")?.value || "........................................").trim();
+    const year = (document.getElementById("ufmYear")?.value || "2026").trim();
+
+    showBoxStatus("statusCover", "⏳ Đang chèn Bìa chính & Phụ bìa UFM...");
+
+    const styleCoverPara = (p, item) => {
+      p.alignment = item.align || Word.Alignment.centered;
+      p.firstLineIndent = 0;
+      p.leftIndent = 0;
+      p.spaceBefore = item.before || 0;
+      p.spaceAfter = item.after !== undefined ? item.after : 6;
+      p.lineSpacing = (item.size || 13) * 1.3;
+      p.font.name = "Times New Roman";
+      p.font.size = item.size || 13;
+      p.font.bold = !!item.bold;
+      p.font.italic = !!item.italic;
+      p.font.color = "#000000";
+    };
+
+    const buildCoverTable = (body, lines) => {
+      const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[lines[0].text]]);
+      tbl.alignment = Word.Alignment.centered;
+
+      try {
+        tbl.width = cmToPt(15.5);
+        [
+          Word.BorderLocation.top,
+          Word.BorderLocation.bottom,
+          Word.BorderLocation.left,
+          Word.BorderLocation.right
+        ].forEach((side) => {
+          const border = tbl.getBorder(side);
+          border.type = Word.BorderType.double;
+          border.width = 1.5;
+          border.color = "#000000";
+        });
+      } catch (e) {}
+
+      const cell = tbl.getCell(0, 0);
+      try {
+        cell.setCellPadding(Word.CellPaddingLocation.top, 28);
+        cell.setCellPadding(Word.CellPaddingLocation.bottom, 28);
+        cell.setCellPadding(Word.CellPaddingLocation.left, 24);
+        cell.setCellPadding(Word.CellPaddingLocation.right, 24);
+      } catch (e) {}
+
+      const firstP = cell.body.paragraphs.getFirst();
+      styleCoverPara(firstP, lines[0]);
+
+      for (let i = 1; i < lines.length; i++) {
+        const p = cell.body.insertParagraph(lines[i].text, Word.InsertLocation.end);
+        styleCoverPara(p, lines[i]);
+      }
+    };
+
+    const mainCoverLines = [
+      { text: "BỘ TÀI CHÍNH", size: 13, bold: false, after: 4 },
+      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 2 },
+      { text: "──────────────────", size: 12, bold: false, after: 64 },
+      { text: author, size: 14, bold: true, after: 52 },
+      { text: title, size: 17, bold: true, after: 64 },
+      { text: docType, size: 14, bold: true, after: 150 },
+      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 0 }
+    ];
+
+    const majorLine = track ? `Ngành: ${major} (${track})` : `Ngành: ${major}`;
+    const subCoverLines = [
+      { text: "BỘ TÀI CHÍNH", size: 13, bold: false, after: 4 },
+      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 2 },
+      { text: "──────────────────", size: 12, bold: false, after: 44 },
+      { text: author, size: 14, bold: true, after: 36 },
+      { text: title, size: 16, bold: true, after: 36 },
+      { text: docType, size: 14, bold: true, after: 24 },
+      { text: majorLine, size: 13, bold: true, after: 6 },
+      { text: "Mã số: " + majorCode, size: 13, bold: true, after: 42 },
+      { text: "NGƯỜI HƯỚNG DẪN KHOA HỌC: " + advisor.toUpperCase(), size: 13, bold: true, after: 96 },
+      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 0 }
+    ];
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+      const body = doc.body;
+
+      // 1. Tạo Section riêng ở đầu file cho 2 trang bìa
+      body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
+
+      // 2. Chèn Phụ bìa vào đầu Section bìa
+      buildCoverTable(body, subCoverLines);
+
+      // 3. Ngắt trang giữa Bìa chính và Phụ bìa
+      body.insertBreak(Word.BreakType.page, Word.InsertLocation.start);
+
+      // 4. Chèn Bìa chính lên trang đầu tiên
+      buildCoverTable(body, mainCoverLines);
+
+      await context.sync();
+
+      // 5. Ngắt liên kết header/footer của nội dung rồi xóa số trang ở Section bìa
+      const sections = doc.sections;
+      sections.load("items");
+      await context.sync();
+
+      if (sections.items.length > 1) {
+        try {
+          sections.items[1].getHeader(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
+          sections.items[1].getFooter(Word.HeaderFooterType.primary).isLinkedToPrevious = false;
+        } catch (e) {}
+        await context.sync();
+      }
+
+      if (sections.items.length > 0) {
+        const coverSec = sections.items[0];
+        coverSec.getHeader(Word.HeaderFooterType.primary).clear();
+        coverSec.getFooter(Word.HeaderFooterType.primary).clear();
+        coverSec.getHeader(Word.HeaderFooterType.firstPage).clear();
+        coverSec.getFooter(Word.HeaderFooterType.firstPage).clear();
+        await context.sync();
+      }
+    });
+
+    showBoxStatus("statusCover", "✅ Đã chèn Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!");
+  } catch (err) {
+    showBoxStatus("statusCover", "❌ Lỗi chèn bìa (dòng " + (err.line || "?") + "): " + err.message, true);
+  }
+}
+
+window.insertUfmCovers = insertUfmCovers;
