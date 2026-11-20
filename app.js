@@ -309,7 +309,7 @@ await Word.run(async (context) => {
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
-    showStatus("❌ Lỗi: " + err.message, 5000);
+    showStatus("❌ Lỗi [v2.3 - dòng " + (err.line || "?") + "]: " + err.message, 10000);
   }
 }
 
