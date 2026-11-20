@@ -10,17 +10,17 @@
   <DefaultLocale>vi-VN</DefaultLocale>
   <DisplayName DefaultValue="FormatWord Pro - Chuẩn Hóa Văn Bản"/>
   <Description DefaultValue="Tiện ích chuẩn hóa văn bản học thuật (Khóa luận, Luận văn các trường ĐH) và hành chính chuẩn NĐ30"/>
-  <IconUrl DefaultValue="https://localhost:3000/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/icon-64.png"/>
-  <SupportUrl DefaultValue="https://localhost:3000"/>
+  <IconUrl DefaultValue="https://longtr99.github.io/formatword/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://longtr99.github.io/formatword/icon-64.png"/>
+  <SupportUrl DefaultValue="https://longtr99.github.io/formatword"/>
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://longtr99.github.io/formatword</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Document"/>
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/>
+    <SourceLocation DefaultValue="https://longtr99.github.io/formatword/taskpane.html"/>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
@@ -65,13 +65,13 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://localhost:3000/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://localhost:3000/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://localhost:3000/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://longtr99.github.io/formatword/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://longtr99.github.io/formatword/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://longtr99.github.io/formatword/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:3000"/>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://longtr99.github.io/formatword"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://longtr99.github.io/formatword/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="FormatWord Pro"/>
