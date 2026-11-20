@@ -114,12 +114,23 @@ function switchTab(tabId, btn) {
 
 function showStatus(msg, timeout = 3000) {
   const el = document.getElementById("status");
-  el.textContent = msg;
-  el.classList.add("show");
-  if (timeout > 0) {
-    setTimeout(() => el.classList.remove("show"), timeout);
+  if (el) {
+    el.textContent = msg;
+    el.classList.add("show");
+    if (timeout > 0) {
+      setTimeout(() => el.classList.remove("show"), timeout);
+    }
+  }
+  const box = document.getElementById("inlineResultBox");
+  if (box) {
+    box.style.display = "block";
+    box.textContent = msg;
+    box.style.background = msg.includes("❌") ? "#fef2f2" : "#ecfdf5";
+    box.style.borderColor = msg.includes("❌") ? "#ef4444" : "#10b981";
+    box.style.color = msg.includes("❌") ? "#991b1b" : "#065f46";
   }
 }
+
 
 function selectPreset(key) {
   document.getElementById("presetSelect").value = key;
@@ -287,6 +298,7 @@ await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQ
 if (pagePosV22 !== "keep") {
   await applyPageNumberPositionOOXML(context, doc, pagePosV22);
 }
+    });
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
