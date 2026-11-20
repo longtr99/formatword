@@ -1038,3 +1038,119 @@ async function applyPageNumberPositionOOXML(context, doc, posKey) {
     await context.sync();
   } catch (e) {}
 }
+function showBoxStatus(boxId, message, isError = false) {
+  const el = document.getElementById(boxId);
+  if (el) {
+    el.style.display = "block";
+    el.style.background = isError ? "#fef2f2" : "#ecfdf5";
+    el.style.color = isError ? "#b91c1c" : "#047857";
+    el.style.border = isError ? "1px solid #fecaca" : "1px solid #a7f3d0";
+    el.textContent = message;
+  }
+  if (typeof showStatus === "function") {
+    showStatus(message, 5000);
+  }
+}
+
+function getActiveFontAndSize() {
+  return {
+    font: document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman",
+    size: parseFloat(document.getElementById("fontSize")?.value || document.getElementById("fontSizeInput")?.value) || 13
+  };
+}
+
+// 1. Nút riêng: NÂNG CAO & TỰ ĐỘNG HÓA
+async function runAdvancedOnly() {
+  try {
+    const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
+    const optRomanPages = document.getElementById("optRomanPages")?.checked;
+    const optAutoCaption = document.getElementById("optAutoCaption")?.checked;
+    const optFitMedia = document.getElementById("optFitMedia")?.checked;
+
+    if (!optCleanAiWeb && !optRomanPages && !optAutoCaption && !optFitMedia) {
+      showBoxStatus("statusAdv", "⚠️ Hãy tick ít nhất 1 mục trong Nâng cao & Tự động hóa trước khi bấm.", true);
+      return;
+    }
+
+    const { font: activeFont, size: activeSize } = getActiveFontAndSize();
+    showBoxStatus("statusAdv", "⏳ Đang xử lý Nâng cao & Tự động hóa...");
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+      if (optCleanAiWeb) await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
+      if (optFitMedia) await fitImagesAndTablesSafe(context, doc);
+      if (optAutoCaption) await autoGenerateCaptions(context, doc);
+      if (optRomanPages) await applyRomanHeaderFooterBeforeChapter1(context, doc);
+      await context.sync();
+    });
+
+    showBoxStatus("statusAdv", "✅ Đã chạy xong Nâng cao & Tự động hóa!");
+  } catch (err) {
+    showBoxStatus("statusAdv", "❌ Lỗi (dòng " + (err.line || "?") + "): " + err.message, true);
+  }
+}
+
+// 2. Nút riêng: CỠ CHỮ ĐỀ MỤC & HỌC THUẬT (V2.1)
+async function runAcademicV21Only() {
+  try {
+    const optAutoToc = document.getElementById("optAutoToc")?.checked;
+    const optKeepLandscape = document.getElementById("optKeepLandscape")?.checked;
+    const optBoldCaptionLabel = document.getElementById("optBoldCaptionLabel")?.checked;
+    const optItalicCaptionDesc = document.getElementById("optItalicCaptionDesc")?.checked;
+    const optRefHanging = document.getElementById("optRefHanging")?.checked;
+    const optCheckFrontOrder = document.getElementById("optCheckFrontOrder")?.checked;
+
+    const { font: activeFont } = getActiveFontAndSize();
+    const hSizes = {
+      h1: parseFloat(document.getElementById("sizeH1")?.value) || 14,
+      h2: parseFloat(document.getElementById("sizeH2")?.value) || 14,
+      h3: parseFloat(document.getElementById("sizeH3")?.value) || 13,
+      cap: parseFloat(document.getElementById("sizeCaption")?.value) || 12
+    };
+
+    showBoxStatus("statusV21", "⏳ Đang áp dụng V2.1...");
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+      await applyHeadingAndCaptionSizes(context, doc, activeFont, hSizes, optBoldCaptionLabel, optItalicCaptionDesc);
+      if (optKeepLandscape) await fitLandscapeAwareMedia(context, doc);
+      if (optRefHanging) await formatReferencesHangingIndent(context, doc);
+      if (optAutoToc) await insertOrUpdateAcademicToc(context, doc);
+      if (optCheckFrontOrder) await checkFrontMatterOrderNotice(context, doc);
+      await context.sync();
+    });
+
+    showBoxStatus("statusV21", "✅ Đã áp dụng Cỡ chữ Đề mục & Học thuật (V2.1)!");
+  } catch (err) {
+    showBoxStatus("statusV21", "❌ Lỗi V2.1 (dòng " + (err.line || "?") + "): " + err.message, true);
+  }
+}
+
+// 3. Nút riêng: TRÍCH DẪN & CẤU TRÚC MỤC LỤC (V2.2)
+async function runCitationV22Only() {
+  try {
+    const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
+    const tocDepth = document.getElementById("tocDepthSelect")?.value || "1-4";
+    const pagePosV22 = document.getElementById("pagePosV22")?.value || "keep";
+    const optCleanRefQuotes = document.getElementById("optCleanRefQuotes")?.checked;
+
+    showBoxStatus("statusV22", "⏳ Đang áp dụng V2.2...");
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+      await applyCitationAndTocV22(context, doc, citationStyle, tocDepth, optCleanRefQuotes);
+      if (pagePosV22 !== "keep") {
+        await applyPageNumberPositionOOXML(context, doc, pagePosV22);
+      }
+      await context.sync();
+    });
+
+    showBoxStatus("statusV22", "✅ Đã áp dụng Trích dẫn & Cấu trúc Mục lục (V2.2)!");
+  } catch (err) {
+    showBoxStatus("statusV22", "❌ Lỗi V2.2 (dòng " + (err.line || "?") + "): " + err.message, true);
+  }
+}
+
+window.runAdvancedOnly = runAdvancedOnly;
+window.runAcademicV21Only = runAcademicV21Only;
+window.runCitationV22Only = runCitationV22Only;
