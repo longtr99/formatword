@@ -1195,60 +1195,73 @@ async function insertUfmCovers() {
 
     showBoxStatus("statusCover", "⏳ Đang chèn Bìa chính & Phụ bìa UFM...");
 
-    const styleCoverPara = (p, item) => {
-      p.alignment = item.align || Word.Alignment.centered;
-      p.firstLineIndent = 0;
-      p.leftIndent = 0;
-      p.rightIndent = 0;
-      p.spaceBefore = item.before || 0;
-      p.spaceAfter = item.after !== undefined ? item.after : 6;
-      p.lineSpacing = (item.size || 13) * 1.3;
-      p.font.name = "Times New Roman";
-      p.font.size = item.size || 13;
-      p.font.bold = !!item.bold;
-      p.font.italic = !!item.italic;
-      p.font.color = "#000000";
-    };
+    const escapeXml = (str) =>
+      String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
 
-    const buildCoverTable = async (context, body, lines) => {
-      const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[""]]);
-      tbl.alignment = Word.Alignment.centered;
+    const buildTableXml = (lines) => {
+      const parasXml = lines
+        .map((item) => {
+          const szHalfPt = Math.round((item.size || 13) * 2);
+          const beforeTwips = Math.round((item.before || 0) * 20);
+          const afterTwips = Math.round((item.after !== undefined ? item.after : 6) * 20);
+          const boldXml = item.bold ? "<w:b/><w:bCs/>" : "";
+          const italicXml = item.italic ? "<w:i/><w:iCs/>" : "";
+          return (
+            `<w:p>` +
+              `<w:pPr>` +
+                `<w:spacing w:before="${beforeTwips}" w:after="${afterTwips}" w:line="312" w:lineRule="auto"/>` +
+                `<w:ind w:left="0" w:right="0" w:firstLine="0"/>` +
+                `<w:jc w:val="center"/>` +
+              `</w:pPr>` +
+              `<w:r>` +
+                `<w:rPr>` +
+                  `<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>` +
+                  `${boldXml}${italicXml}` +
+                  `<w:color w:val="000000"/>` +
+                  `<w:sz w:val="${szHalfPt}"/>` +
+                  `<w:szCs w:val="${szHalfPt}"/>` +
+                `</w:rPr>` +
+                `<w:t xml:space="preserve">${escapeXml(item.text)}</w:t>` +
+              `</w:r>` +
+            `</w:p>`
+          );
+        })
+        .join("");
 
-      try {
-        tbl.width = cmToPt(15.5);
-        [
-          Word.BorderLocation.top,
-          Word.BorderLocation.bottom,
-          Word.BorderLocation.left,
-          Word.BorderLocation.right
-        ].forEach((side) => {
-          const border = tbl.getBorder(side);
-          border.type = Word.BorderType.double;
-          border.width = 1.5;
-          border.color = "#000000";
-        });
-      } catch (e) {}
-
-      const cell = tbl.getCell(0, 0);
-      try {
-        cell.setCellPadding(Word.CellPaddingLocation.top, 26);
-        cell.setCellPadding(Word.CellPaddingLocation.bottom, 26);
-        cell.setCellPadding(Word.CellPaddingLocation.left, 18);
-        cell.setCellPadding(Word.CellPaddingLocation.right, 18);
-      } catch (e) {}
-
-      await context.sync();
-
-      let curP = cell.body.paragraphs.getFirst();
-      curP.insertText(lines[0].text, Word.InsertLocation.replace);
-      styleCoverPara(curP, lines[0]);
-      await context.sync();
-
-      for (let i = 1; i < lines.length; i++) {
-        curP = curP.insertParagraph(lines[i].text, Word.InsertLocation.after);
-        styleCoverPara(curP, lines[i]);
-      }
-      await context.sync();
+      return (
+        `<w:tbl>` +
+          `<w:tblPr>` +
+            `<w:tblW w:w="8600" w:type="dxa"/>` +
+            `<w:jc w:val="center"/>` +
+            `<w:tblBorders>` +
+              `<w:top w:val="double" w:sz="12" w:space="0" w:color="000000"/>` +
+              `<w:left w:val="double" w:sz="12" w:space="0" w:color="000000"/>` +
+              `<w:bottom w:val="double" w:sz="12" w:space="0" w:color="000000"/>` +
+              `<w:right w:val="double" w:sz="12" w:space="0" w:color="000000"/>` +
+            `</w:tblBorders>` +
+            `<w:tblLayout w:type="fixed"/>` +
+            `<w:tblCellMar>` +
+              `<w:top w:w="520" w:type="dxa"/>` +
+              `<w:left w:w="300" w:type="dxa"/>` +
+              `<w:bottom w:w="520" w:type="dxa"/>` +
+              `<w:right w:w="300" w:type="dxa"/>` +
+            `</w:tblCellMar>` +
+          `</w:tblPr>` +
+          `<w:tblGrid><w:gridCol w:w="8600"/></w:tblGrid>` +
+          `<w:tr>` +
+            `<w:trPr><w:cantSplit/></w:trPr>` +
+            `<w:tc>` +
+              `<w:tcPr><w:tcW w:w="8600" w:type="dxa"/></w:tcPr>` +
+              parasXml +
+            `</w:tc>` +
+          `</w:tr>` +
+        `</w:tbl>`
+      );
     };
 
     const mainCoverLines = [
@@ -1275,20 +1288,42 @@ async function insertUfmCovers() {
       { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 12 }
     ];
 
+    const fullCoversOoxml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+        '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+          '<pkg:xmlData>' +
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+              '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+            '</Relationships>' +
+          '</pkg:xmlData>' +
+        '</pkg:part>' +
+        '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+          '<pkg:xmlData>' +
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+              '<w:body>' +
+                buildTableXml(mainCoverLines) +
+                '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' +
+                buildTableXml(subCoverLines) +
+              '</w:body>' +
+            '</w:document>' +
+          '</pkg:xmlData>' +
+        '</pkg:part>' +
+      '</pkg:package>';
+
     await Word.run(async (context) => {
       const doc = context.document;
       const body = doc.body;
 
+      // 1. Tách Section riêng cho 2 trang bìa
       body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
       await context.sync();
 
-      await buildCoverTable(context, body, subCoverLines);
-
-      body.insertBreak(Word.BreakType.page, Word.InsertLocation.start);
+      // 2. Chèn trọn bộ Bìa chính + ngắt trang + Phụ bìa (tất cả nằm trong khung viền kép)
+      body.insertOoxml(fullCoversOoxml, Word.InsertLocation.start);
       await context.sync();
 
-      await buildCoverTable(context, body, mainCoverLines);
-
+      // 3. Ngắt liên kết header/footer phần nội dung rồi ẩn số trang ở Section bìa
       const sections = doc.sections;
       sections.load("items");
       await context.sync();
