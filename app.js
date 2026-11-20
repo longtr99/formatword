@@ -7,7 +7,7 @@ const PRESETS = {
     mTop: 2.5, mBottom: 2.5, mLeft: 3.5, mRight: 2.0,
     alignment: "Justified", pageNumPos: "bottom_center", hideFirstPage: true
   },
-    ufm_sdh: {
+  ufm_sdh: {
     name: "UFM (Sau đại học) - Luận văn / Đề án Thạc sĩ",
     desc: "Times New Roman • 13pt • Lề T3.5 - P2 - Tr3.5 - D3.0 cm • Giãn dòng 1.5",
     fontFamily: "Times New Roman", fontSize: 13, lineSpacing: 1.5,
@@ -15,7 +15,6 @@ const PRESETS = {
     mTop: 3.5, mBottom: 3.0, mLeft: 3.5, mRight: 2.0,
     alignment: "Justified", pageNumPos: "bottom_center", hideFirstPage: true
   },
-
   ueh: {
     name: "UEH - Đại học Kinh tế TP.HCM",
     desc: "Times New Roman • 13pt • Lề T3.5 - P2 - Tr2.5 - D2.5 cm • Giãn dòng 1.5",
@@ -106,10 +105,11 @@ Office.onReady((info) => {
 });
 
 function switchTab(tabId, btn) {
-  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.getElementById("tab-" + tabId).classList.add("active");
-  btn.classList.add("active");
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+  const target = document.getElementById("tab-" + tabId);
+  if (target) target.classList.add("active");
+  if (btn) btn.classList.add("active");
 }
 
 function showStatus(msg, timeout = 3000) {
@@ -131,10 +131,23 @@ function showStatus(msg, timeout = 3000) {
   }
 }
 
+function showBoxStatus(boxId, message, isError = false) {
+  const el = document.getElementById(boxId);
+  if (el) {
+    el.style.display = "block";
+    el.style.background = isError ? "#fef2f2" : "#ecfdf5";
+    el.style.color = isError ? "#b91c1c" : "#047857";
+    el.style.border = isError ? "1px solid #fecaca" : "1px solid #a7f3d0";
+    el.textContent = message;
+  } else {
+    showStatus(message, 5000);
+  }
+}
 
 function selectPreset(key) {
-  document.getElementById("presetSelect").value = key;
-  document.querySelectorAll(".chip").forEach(c => {
+  const sel = document.getElementById("presetSelect");
+  if (sel) sel.value = key;
+  document.querySelectorAll(".chip").forEach((c) => {
     c.classList.toggle("active", c.dataset.preset === key);
   });
 
@@ -164,7 +177,7 @@ function selectPreset(key) {
 
 function markCustom() {
   document.getElementById("presetSelect").value = "custom";
-  document.querySelectorAll(".chip").forEach(c => {
+  document.querySelectorAll(".chip").forEach((c) => {
     c.classList.toggle("active", c.dataset.preset === "custom");
   });
   updateCustomSummary();
@@ -183,7 +196,17 @@ function updateCustomSummary() {
 }
 
 const cmToPt = (cm) => cm * 28.3464567;
-// Bảo vệ Section Bìa (Section 0 nếu chứa bìa UFM) và mọi dòng Mục lục (TOC)
+
+function getActiveFontAndSize() {
+  return {
+    font: document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman",
+    size: parseFloat(document.getElementById("fontSize")?.value || document.getElementById("fontSizeInput")?.value) || 13
+  };
+}
+
+// =========================================================================
+// BẢO VỆ SECTION BÌA & MỤC LỤC (BẤM THỨ TỰ NÀO CŨNG KHÔNG HỎNG)
+// =========================================================================
 async function getContentStartSectionIndex(context, doc) {
   const sections = doc.sections;
   sections.load("items");
@@ -236,7 +259,6 @@ function isTocParagraph(p) {
   const txt = (p.text || "").trim();
   if (builtIn.includes("toc")) return true;
   if (styleName.includes("toc") || styleName.includes("mục lục") || styleName.includes("table of contents")) return true;
-  // Dòng mục lục luôn kết thúc bằng phím Tab + số trang (1, 2... hoặc i, ii...)
   if (/\t\s*(\d+|[ivxlcdm]+)\s*$/i.test(txt)) return true;
   return false;
 }
@@ -246,11 +268,15 @@ function isHeadingParagraph(p) {
   const styleName = (p.style ? p.style.toString() : "").toLowerCase();
   return builtIn.startsWith("heading") || styleName.startsWith("heading");
 }
+
+// =========================================================================
+// CHUẨN HÓA TÀI LIỆU CHÍNH
+// =========================================================================
 async function applySelectedStandard() {
   try {
     showStatus("⏳ Đang chuẩn hóa văn bản...", 0);
 
-    if (document.getElementById("optAutoClean").checked) {
+    if (document.getElementById("optAutoClean")?.checked) {
       await runSilentClean();
     }
 
@@ -267,7 +293,7 @@ async function applySelectedStandard() {
       const mRight = parseFloat(document.getElementById("mRight").value);
       const align = document.getElementById("alignment").value;
 
-    const { paragraphs, sections } = await loadContentParagraphs(
+      const { paragraphs, sections } = await loadContentParagraphs(
         context,
         context.document,
         "items,text,style,styleBuiltIn"
@@ -295,34 +321,24 @@ async function applySelectedStandard() {
       await context.sync();
     });
 
-    if (document.getElementById("optPageNumber").checked) {
+    if (document.getElementById("optPageNumber")?.checked) {
       await applyPageNumbersOnly(true);
     }
-await Word.run(async (context) => {
+
+    await Word.run(async (context) => {
       const doc = context.document;
+      const { font: activeFont, size: activeSize } = getActiveFontAndSize();
 
       const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
       const optRomanPages = document.getElementById("optRomanPages")?.checked;
       const optAutoCaption = document.getElementById("optAutoCaption")?.checked;
       const optFitMedia = document.getElementById("optFitMedia")?.checked;
 
-      const activeFont = document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman";
-      const activeSize = parseFloat(document.getElementById("fontSize")?.value || document.getElementById("fontSizeInput")?.value) || 13;
+      if (optCleanAiWeb) await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
+      if (optFitMedia) await fitImagesAndTablesSafe(context, doc);
+      if (optAutoCaption) await autoGenerateCaptions(context, doc);
+      if (optRomanPages) await applyRomanHeaderFooterBeforeChapter1(context, doc);
 
-      if (optCleanAiWeb) {
-        await cleanAiAndWebTraces(context, doc, activeFont, activeSize);
-      }
-      if (optFitMedia) {
-        await fitImagesAndTablesSafe(context, doc);
-      }
-      if (optAutoCaption) {
-        await autoGenerateCaptions(context, doc);
-      }
-      if (optRomanPages) {
-        await applyRomanHeaderFooterBeforeChapter1(context, doc);
-      }
-
-      // Chạy bổ sung V2.1 (Heading, Landscape, Chú thích, Tài liệu tham khảo, Mục lục)
       const optAutoToc = document.getElementById("optAutoToc")?.checked;
       const optKeepLandscape = document.getElementById("optKeepLandscape")?.checked;
       const optBoldCaptionLabel = document.getElementById("optBoldCaptionLabel")?.checked;
@@ -339,20 +355,11 @@ await Word.run(async (context) => {
 
       await applyHeadingAndCaptionSizes(context, doc, activeFont, hSizes, optBoldCaptionLabel, optItalicCaptionDesc);
 
-      if (optKeepLandscape) {
-        await fitLandscapeAwareMedia(context, doc);
-      }
-      if (optRefHanging) {
-        await formatReferencesHangingIndent(context, doc);
-      }
-      if (optAutoToc) {
-        await insertOrUpdateAcademicToc(context, doc);
-      }
-      if (optCheckFrontOrder) {
-        await checkFrontMatterOrderNotice(context, doc);
-      }
+      if (optKeepLandscape) await fitLandscapeAwareMedia(context, doc);
+      if (optRefHanging) await formatReferencesHangingIndent(context, doc);
+      if (optAutoToc) await insertOrUpdateAcademicToc(context, doc);
+      if (optCheckFrontOrder) await checkFrontMatterOrderNotice(context, doc);
 
-      // Chạy bổ sung V2.2 (Chuẩn trích dẫn, TOC 3/4 cấp, Vị trí số trang V2.2)
       const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
       const tocDepth = document.getElementById("tocDepthSelect")?.value || "1-4";
       const pagePosV22 = document.getElementById("pagePosV22")?.value || "keep";
@@ -365,14 +372,16 @@ await Word.run(async (context) => {
 
       await context.sync();
     });
-  
 
     showStatus("✅ Đã chuẩn hóa tài liệu hoàn tất!");
   } catch (err) {
-    showStatus("❌ Lỗi [v2.3 - dòng " + (err.line || "?") + "]: " + err.message, 10000);
+    showStatus("❌ Lỗi [v3.2 - dòng " + (err.line || "?") + "]: " + err.message, 10000);
   }
 }
 
+// =========================================================================
+// ĐÁNH SỐ TRANG
+// =========================================================================
 async function applyPageNumbersOnly(silent = false) {
   await Word.run(async (context) => {
     const pos = document.getElementById("pageNumPos").value;
@@ -444,7 +453,9 @@ async function applyPageNumbersOnly(silent = false) {
   });
 }
 
-
+// =========================================================================
+// TAB DỌN DẸP
+// =========================================================================
 async function runSilentClean() {
   await Word.run(async (context) => {
     const results = context.document.body.search("  ", { matchWildcards: false });
@@ -549,6 +560,9 @@ async function changeCase(mode) {
   });
 }
 
+// =========================================================================
+// HEADING & XOAY HƯỚNG GIẤY
+// =========================================================================
 async function applyHeadingStyle(level) {
   await Word.run(async (context) => {
     const fontFamily = document.getElementById("fontFamily").value;
@@ -587,6 +601,41 @@ async function applyHeadingStyle(level) {
   });
 }
 
+async function applyHeadingQuick(level) {
+  try {
+    await Word.run(async (context) => {
+      const sel = context.document.getSelection();
+      const paras = sel.paragraphs;
+      paras.load("items");
+      await context.sync();
+
+      const { font: fontName } = getActiveFontAndSize();
+
+      for (const p of paras.items) {
+        p.style = `Heading ${level}`;
+        p.font.name = fontName;
+        if (level === 1 || level === 2) {
+          p.font.size = 14;
+          p.font.bold = true;
+          p.font.italic = false;
+        } else if (level === 3) {
+          p.font.size = 13;
+          p.font.bold = true;
+          p.font.italic = true;
+        } else if (level === 4) {
+          p.font.size = 13;
+          p.font.bold = false;
+          p.font.italic = true;
+        }
+      }
+      await context.sync();
+      showStatus(`✅ Đã gán Heading ${level} cho vùng chọn!`);
+    });
+  } catch (err) {
+    showStatus("❌ Lỗi gán Heading: " + err.message, 4000);
+  }
+}
+
 async function insertLandscapeSection() {
   await Word.run(async (context) => {
     const range = context.document.getSelection();
@@ -613,7 +662,11 @@ async function insertPortraitSection() {
     await context.sync();
     showStatus("✅ Đã chuyển về trang hướng Dọc (Portrait)!");
   });
-}// 1. XÓA DẤU VẾT AI & WEB + CHUẨN HÓA MARKDOWN CƠ BẢN
+}
+
+// =========================================================================
+// V2.0 - NÂNG CAO & TỰ ĐỘNG HÓA
+// =========================================================================
 async function cleanAiAndWebTraces(context, doc, targetFont, targetSize) {
   const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
@@ -651,7 +704,6 @@ async function cleanAiAndWebTraces(context, doc, targetFont, targetSize) {
   }
 }
 
-// 2. CĂN CHỈNH & CO DÃN ẢNH + BẢNG VỪA VÙNG AN TOÀN (15.5 cm dọc / 24.5 cm ngang)
 async function fitImagesAndTablesSafe(context, doc) {
   const MAX_PORTRAIT_PT = 15.5 * 28.3465;
 
@@ -684,18 +736,16 @@ async function fitImagesAndTablesSafe(context, doc) {
   } catch (e) {}
 }
 
-// 3. TỰ ĐỘNG SINH CHÚ THÍCH (Hình X.Y / Bảng X.Y) CHO MỤC CHƯA CÓ TÊN
 async function autoGenerateCaptions(context, doc) {
-  const paragraphs = doc.body.paragraphs;
-  paragraphs.load("items, text");
-  await context.sync();
+  const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
   let chapterNum = 1;
   let figIndex = 0;
   let tblIndex = 0;
 
-  for (let i = 0; i < paragraphs.items.length; i++) {
-    const p = paragraphs.items[i];
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+    if (isTocParagraph(p)) continue;
     const txt = (p.text || "").trim();
 
     const chapMatch = txt.match(/^(CHƯƠNG|CHUONG|CHAPTER)\s+(\d+)/i);
@@ -718,7 +768,6 @@ async function autoGenerateCaptions(context, doc) {
   await context.sync();
 }
 
-// 4. ĐÁNH SỐ TRANG LA MÃ (i, ii, iii...) CHO CÁC TRANG ĐẦU TRƯỚC CHƯƠNG 1
 async function applyRomanHeaderFooterBeforeChapter1(context, doc) {
   const paragraphs = doc.body.paragraphs;
   paragraphs.load("items, text");
@@ -735,25 +784,37 @@ async function applyRomanHeaderFooterBeforeChapter1(context, doc) {
 
   if (chapter1Index > 0) {
     try {
-      paragraphs.items[chapter1Index].insertBreak(Word.BreakType.next, Word.InsertLocation.before);
+      paragraphs.items[chapter1Index].insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.before);
       await context.sync();
     } catch (e) {}
   }
 
   try {
-    const firstSection = doc.sections.getFirst();
-    const footer = firstSection.getFooter(Word.HeaderFooterType.primary);
+    const startIdx = await getContentStartSectionIndex(context, doc);
+    const sections = doc.sections;
+    sections.load("items");
+    await context.sync();
+    const targetSec = sections.items[startIdx] || sections.items[0];
+    const footer = targetSec.getFooter(Word.HeaderFooterType.primary);
     const ooxmlRomanPage =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-      '<w:part><w:xmlData><w:p><w:pPr><w:jc w:val="center"/></w:pPr>' +
-      '<w:fldSimple w:instr="PAGE \\* roman"/>' +
-      '</w:p></w:xmlData></w:part></w:pkg>';
+      '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+      '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+      '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '</Relationships></pkg:xmlData></pkg:part>' +
+      '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+      '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+      '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:fldSimple w:instr="PAGE \\* roman"/></w:p>' +
+      '</w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
     footer.insertOoxml(ooxmlRomanPage, Word.InsertLocation.end);
     await context.sync();
   } catch (e) {}
 }
-// V2.1 - 1. ÁP DỤNG CỠ CHỮ RIÊNG CHO HEADING 1-3 & ĐỊNH DẠNG CHÚ THÍCH BẢNG/HÌNH
+
+// =========================================================================
+// V2.1 - CỠ CHỮ ĐỀ MỤC & HỌC THUẬT
+// =========================================================================
 async function applyHeadingAndCaptionSizes(context, doc, targetFont, hSizes, boldLabel, italicDesc) {
   const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
@@ -802,7 +863,6 @@ async function applyHeadingAndCaptionSizes(context, doc, targetFont, hSizes, bol
   }
 }
 
-// V2.1 - 2. CO DÃN ẢNH/BẢNG THEO HƯỚNG TRANG (15.5 CM DỌC / 24.5 CM NGANG)
 async function fitLandscapeAwareMedia(context, doc) {
   const MAX_PORTRAIT_PT = 15.5 * 28.3465;
   const MAX_LANDSCAPE_PT = 24.5 * 28.3465;
@@ -833,24 +893,19 @@ async function fitLandscapeAwareMedia(context, doc) {
   } catch (e) {}
 }
 
-// V2.1 - 3. CHUẨN HÓA TÀI LIỆU THAM KHẢO (HANGING INDENT 1.27 CM)
 async function formatReferencesHangingIndent(context, doc) {
-  const paragraphs = doc.body.paragraphs;
-  paragraphs.load("items, text");
-  await context.sync();
+  const { paragraphs } = await loadContentParagraphs(context, doc, "items,text,style,styleBuiltIn");
 
   let inRefSection = false;
-  for (let i = 0; i < paragraphs.items.length; i++) {
-    const p = paragraphs.items[i];
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
     const txt = (p.text || "").trim();
 
     if (/^(TÀI LIỆU THAM KHẢO|DANH MỤC TÀI LIỆU THAM KHẢO|REFERENCES)/i.test(txt)) {
       inRefSection = true;
       continue;
     }
-    if (inRefSection && /^(PHỤ LỤC|APPENDIX)/i.test(txt)) {
-      break;
-    }
+    if (inRefSection && /^(PHỤ LỤC|APPENDIX)/i.test(txt)) break;
 
     if (inRefSection && txt.length > 10) {
       try {
@@ -863,7 +918,6 @@ async function formatReferencesHangingIndent(context, doc) {
   await context.sync();
 }
 
-// V2.1 - 4. TỰ ĐỘNG TẠO / CẬP NHẬT MỤC LỤC (TOC 4 CẤP) QUA OOXML AN TOÀN CHO WORD MAC
 async function insertOrUpdateAcademicToc(context, doc) {
   const paragraphs = doc.body.paragraphs;
   paragraphs.load("items, text");
@@ -887,17 +941,21 @@ async function insertOrUpdateAcademicToc(context, doc) {
     try {
       const tocOoxml =
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-        '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-        '<w:part><w:xmlData><w:p>' +
-        '<w:fldSimple w:instr="TOC \\o &quot;1-4&quot; \\h \\z \\u"/>' +
-        '</w:p></w:xmlData></w:part></w:pkg>';
+        '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+        '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+        '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+        '</Relationships></pkg:xmlData></pkg:part>' +
+        '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+        '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+        '<w:p><w:fldSimple w:instr="TOC \\o &quot;1-4&quot; \\h \\z \\u"/></w:p>' +
+        '</w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
       paragraphs.items[tocAnchorIndex].insertOoxml(tocOoxml, Word.InsertLocation.after);
       await context.sync();
     } catch (e) {}
   }
 }
 
-// V2.1 - 5. KIỂM TRA THỨ TỰ PHẦN ĐẦU LUẬN VĂN
 async function checkFrontMatterOrderNotice(context, doc) {
   const paragraphs = doc.body.paragraphs;
   paragraphs.load("items, text");
@@ -921,19 +979,18 @@ async function checkFrontMatterOrderNotice(context, doc) {
     }
   }
 
-  const found = orderKeys.filter(x => x.pos !== -1);
+  const found = orderKeys.filter((x) => x.pos !== -1);
   for (let i = 1; i < found.length; i++) {
     if (found[i].pos < found[i - 1].pos) {
-      const statusEl = document.getElementById("status") || document.querySelector(".status-bar");
-      if (statusEl) {
-        statusEl.textContent = `⚠️ Gợi ý thứ tự phần đầu: "${found[i].key}" nên đặt sau "${found[i - 1].key}".`;
-      }
+      showStatus(`⚠️ Gợi ý thứ tự phần đầu: "${found[i].key}" nên đặt sau "${found[i - 1].key}".`, 6000);
       break;
     }
   }
 }
 
-// V2.2 - 1. CHUẨN HÓA TRÍCH DẪN (APA / IEEE / TCVN / GB-T / MLA) & TOC 3-4 CẤP
+// =========================================================================
+// V2.2 - TRÍCH DẪN, TOC & VỊ TRÍ SỐ TRANG
+// =========================================================================
 async function applyCitationAndTocV22(context, doc, styleKey, tocDepth, cleanQuotes) {
   const paragraphs = doc.body.paragraphs;
   paragraphs.load("items, text");
@@ -945,10 +1002,15 @@ async function applyCitationAndTocV22(context, doc, styleKey, tocDepth, cleanQuo
       try {
         const toc3Ooxml =
           '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-          '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-          '<w:part><w:xmlData><w:p>' +
-          '<w:fldSimple w:instr="TOC \\o &quot;1-3&quot; \\h \\z \\u"/>' +
-          '</w:p></w:xmlData></w:part></w:pkg>';
+          '<pkg:package xmlns:pkg="http://schemas.microsoft.com/office/2006/xmlPackage">' +
+          '<pkg:part pkg:name="/_rels/.rels" pkg:contentType="application/vnd.openxmlformats-package.relationships+xml">' +
+          '<pkg:xmlData><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+          '</Relationships></pkg:xmlData></pkg:part>' +
+          '<pkg:part pkg:name="/word/document.xml" pkg:contentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml">' +
+          '<pkg:xmlData><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+          '<w:p><w:fldSimple w:instr="TOC \\o &quot;1-3&quot; \\h \\z \\u"/></w:p>' +
+          '</w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
         paragraphs.items[i].insertOoxml(toc3Ooxml, Word.InsertLocation.after);
       } catch (e) {}
       break;
@@ -985,76 +1047,6 @@ async function applyCitationAndTocV22(context, doc, styleKey, tocDepth, cleanQuo
   await context.sync();
 }
 
-// V2.2 - 2. ĐÁNH SỐ TRANG 4 VỊ TRÍ QUA OOXML AN TOÀN CHO WORD MAC / LTSC
-async function applyPageNumberPositionOOXML(context, doc, posKey) {
-  const isTop = posKey.startsWith("top");
-  const alignVal = posKey.endsWith("right") ? "right" : "center";
-
-  const pageFieldOoxml =
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-    '<w:pkg xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-    `<w:part><w:xmlData><w:p><w:pPr><w:jc w:val="${alignVal}"/></w:pPr>` +
-    '<w:fldSimple w:instr="PAGE"/>' +
-    '</w:p></w:xmlData></w:part></w:pkg>';
-
-  try {
-    const sections = doc.sections;
-    sections.load("items");
-    await context.sync();
-
-    for (let i = 0; i < sections.items.length; i++) {
-      const sec = sections.items[i];
-      const targetArea = isTop
-        ? sec.getHeader(Word.HeaderFooterType.primary)
-        : sec.getFooter(Word.HeaderFooterType.primary);
-      targetArea.insertOoxml(pageFieldOoxml, Word.InsertLocation.end);
-    }
-    await context.sync();
-  } catch (e) {}
-}
-
-// =========================================================================
-// BỔ SUNG: HEADING 4 & CHÈN BÌA CHÍNH + PHỤ BÌA UFM (TÁCH SECTION KHÔNG SỐ TRANG)
-// =========================================================================
-async function applyHeadingQuick(level) {
-  try {
-    await Word.run(async (context) => {
-      const sel = context.document.getSelection();
-      const paras = sel.paragraphs;
-      paras.load("items");
-      await context.sync();
-
-      const fontName = document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman";
-
-      for (const p of paras.items) {
-        p.style = `Heading ${level}`;
-        p.font.name = fontName;
-        if (level === 1 || level === 2) {
-          p.font.size = 14;
-          p.font.bold = true;
-          p.font.italic = false;
-        } else if (level === 3) {
-          p.font.size = 13;
-          p.font.bold = true;
-          p.font.italic = true;
-        } else if (level === 4) {
-          p.font.size = 13;
-          p.font.bold = false;
-          p.font.italic = true;
-        }
-      }
-      await context.sync();
-      if (typeof showStatus === "function") {
-        showStatus(`✅ Đã gán Heading ${level} cho vùng chọn!`);
-      }
-    });
-  } catch (err) {
-    if (typeof showStatus === "function") {
-      showStatus("❌ Lỗi gán Heading: " + err.message, 4000);
-    }
-  }
-}
-
 async function applyPageNumberPositionOOXML(context, doc, posKey) {
   const isTop = posKey.startsWith("top");
   const alignVal = posKey.endsWith("right") ? "right" : "center";
@@ -1073,16 +1065,12 @@ async function applyPageNumberPositionOOXML(context, doc, posKey) {
     '</w:p></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>';
 
   try {
-    const firstPara = doc.body.paragraphs.getFirst();
-    firstPara.load("text");
+    const startSecIdx = await getContentStartSectionIndex(context, doc);
     const sections = doc.sections;
     sections.load("items");
     await context.sync();
 
-    const hasUfmCover = (firstPara.text || "").toUpperCase().includes("BỘ TÀI CHÍNH");
-    const startSecIdx = (hasUfmCover && sections.items.length > 1) ? 1 : 0;
-
-    if (hasUfmCover) {
+    if (startSecIdx > 0) {
       const coverSec = sections.items[0];
       coverSec.getHeader(Word.HeaderFooterType.primary).clear();
       coverSec.getFooter(Word.HeaderFooterType.primary).clear();
@@ -1098,28 +1086,10 @@ async function applyPageNumberPositionOOXML(context, doc, posKey) {
     await context.sync();
   } catch (e) {}
 }
-function showBoxStatus(boxId, message, isError = false) {
-  const el = document.getElementById(boxId);
-  if (el) {
-    el.style.display = "block";
-    el.style.background = isError ? "#fef2f2" : "#ecfdf5";
-    el.style.color = isError ? "#b91c1c" : "#047857";
-    el.style.border = isError ? "1px solid #fecaca" : "1px solid #a7f3d0";
-    el.textContent = message;
-  }
-  if (typeof showStatus === "function") {
-    showStatus(message, 5000);
-  }
-}
 
-function getActiveFontAndSize() {
-  return {
-    font: document.getElementById("fontFamily")?.value || document.getElementById("fontSelect")?.value || "Times New Roman",
-    size: parseFloat(document.getElementById("fontSize")?.value || document.getElementById("fontSizeInput")?.value) || 13
-  };
-}
-
-// 1. Nút riêng: NÂNG CAO & TỰ ĐỘNG HÓA
+// =========================================================================
+// 3 NÚT BẤM RIÊNG (NÂNG CAO / V2.1 / V2.2)
+// =========================================================================
 async function runAdvancedOnly() {
   try {
     const optCleanAiWeb = document.getElementById("optCleanAiWeb")?.checked;
@@ -1150,7 +1120,6 @@ async function runAdvancedOnly() {
   }
 }
 
-// 2. Nút riêng: CỠ CHỮ ĐỀ MỤC & HỌC THUẬT (V2.1)
 async function runAcademicV21Only() {
   try {
     const optAutoToc = document.getElementById("optAutoToc")?.checked;
@@ -1186,7 +1155,6 @@ async function runAcademicV21Only() {
   }
 }
 
-// 3. Nút riêng: TRÍCH DẪN & CẤU TRÚC MỤC LỤC (V2.2)
 async function runCitationV22Only() {
   try {
     const citationStyle = document.getElementById("citationStyleSelect")?.value || "apa7";
@@ -1211,9 +1179,9 @@ async function runCitationV22Only() {
   }
 }
 
-window.runAdvancedOnly = runAdvancedOnly;
-window.runAcademicV21Only = runAcademicV21Only;
-window.runCitationV22Only = runCitationV22Only;
+// =========================================================================
+// CHÈN BÌA CHÍNH & PHỤ BÌA UFM (SĐH) - CHUẨN MẪU, TÁCH SECTION ẨN SỐ TRANG
+// =========================================================================
 async function insertUfmCovers() {
   try {
     const author = (document.getElementById("ufmAuthor")?.value || "HỌ VÀ TÊN TÁC GIẢ").trim().toUpperCase();
@@ -1243,7 +1211,6 @@ async function insertUfmCovers() {
     };
 
     const buildCoverTable = async (context, body, lines) => {
-      // Khởi tạo ô rỗng rồi sync trước để Word for Mac không gộp dòng 1 & dòng 2
       const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[""]]);
       tbl.alignment = Word.Alignment.centered;
 
@@ -1272,13 +1239,11 @@ async function insertUfmCovers() {
 
       await context.sync();
 
-      // Dòng đầu tiên (BỘ TÀI CHÍNH)
       let curP = cell.body.paragraphs.getFirst();
       curP.insertText(lines[0].text, Word.InsertLocation.replace);
       styleCoverPara(curP, lines[0]);
       await context.sync();
 
-      // Các dòng tiếp theo luôn tách thành đoạn độc lập
       for (let i = 1; i < lines.length; i++) {
         curP = curP.insertParagraph(lines[i].text, Word.InsertLocation.after);
         styleCoverPara(curP, lines[i]);
@@ -1314,21 +1279,16 @@ async function insertUfmCovers() {
       const doc = context.document;
       const body = doc.body;
 
-      // 1. Tạo Section riêng ở đầu file cho 2 trang bìa
       body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
       await context.sync();
 
-      // 2. Chèn Phụ bìa vào đầu Section bìa
       await buildCoverTable(context, body, subCoverLines);
 
-      // 3. Ngắt trang giữa Bìa chính và Phụ bìa
       body.insertBreak(Word.BreakType.page, Word.InsertLocation.start);
       await context.sync();
 
-      // 4. Chèn Bìa chính lên trang đầu tiên
       await buildCoverTable(context, body, mainCoverLines);
 
-      // 5. Ngắt liên kết header/footer phần nội dung rồi xóa số trang ở Section bìa
       const sections = doc.sections;
       sections.load("items");
       await context.sync();
@@ -1357,11 +1317,23 @@ async function insertUfmCovers() {
   }
 }
 
-window.insertUfmCovers = insertUfmCovers;
-    showBoxStatus("statusCover", "✅ Đã chèn Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!");
-  } catch (err) {
-    showBoxStatus("statusCover", "❌ Lỗi chèn bìa (dòng " + (err.line || "?") + "): " + err.message, true);
-  }
-}
-
+// Gắn toàn bộ hàm xử lý nút ra global window
+window.switchTab = switchTab;
+window.selectPreset = selectPreset;
+window.markCustom = markCustom;
+window.applySelectedStandard = applySelectedStandard;
+window.applyPageNumbersOnly = applyPageNumbersOnly;
+window.removeDoubleSpaces = removeDoubleSpaces;
+window.removeEmptyLines = removeEmptyLines;
+window.fixPunctuationSpaces = fixPunctuationSpaces;
+window.softBreakToParagraph = softBreakToParagraph;
+window.cleanAllErrors = cleanAllErrors;
+window.changeCase = changeCase;
+window.applyHeadingStyle = applyHeadingStyle;
+window.applyHeadingQuick = applyHeadingQuick;
+window.insertLandscapeSection = insertLandscapeSection;
+window.insertPortraitSection = insertPortraitSection;
+window.runAdvancedOnly = runAdvancedOnly;
+window.runAcademicV21Only = runAcademicV21Only;
+window.runCitationV22Only = runCitationV22Only;
 window.insertUfmCovers = insertUfmCovers;
