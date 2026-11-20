@@ -1231,6 +1231,7 @@ async function insertUfmCovers() {
       p.alignment = item.align || Word.Alignment.centered;
       p.firstLineIndent = 0;
       p.leftIndent = 0;
+      p.rightIndent = 0;
       p.spaceBefore = item.before || 0;
       p.spaceAfter = item.after !== undefined ? item.after : 6;
       p.lineSpacing = (item.size || 13) * 1.3;
@@ -1241,8 +1242,9 @@ async function insertUfmCovers() {
       p.font.color = "#000000";
     };
 
-    const buildCoverTable = (body, lines) => {
-      const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[lines[0].text]]);
+    const buildCoverTable = async (context, body, lines) => {
+      // Khởi tạo ô rỗng rồi sync trước để Word for Mac không gộp dòng 1 & dòng 2
+      const tbl = body.insertTable(1, 1, Word.InsertLocation.start, [[""]]);
       tbl.alignment = Word.Alignment.centered;
 
       try {
@@ -1262,43 +1264,50 @@ async function insertUfmCovers() {
 
       const cell = tbl.getCell(0, 0);
       try {
-        cell.setCellPadding(Word.CellPaddingLocation.top, 28);
-        cell.setCellPadding(Word.CellPaddingLocation.bottom, 28);
-        cell.setCellPadding(Word.CellPaddingLocation.left, 24);
-        cell.setCellPadding(Word.CellPaddingLocation.right, 24);
+        cell.setCellPadding(Word.CellPaddingLocation.top, 26);
+        cell.setCellPadding(Word.CellPaddingLocation.bottom, 26);
+        cell.setCellPadding(Word.CellPaddingLocation.left, 18);
+        cell.setCellPadding(Word.CellPaddingLocation.right, 18);
       } catch (e) {}
 
-      const firstP = cell.body.paragraphs.getFirst();
-      styleCoverPara(firstP, lines[0]);
+      await context.sync();
 
+      // Dòng đầu tiên (BỘ TÀI CHÍNH)
+      let curP = cell.body.paragraphs.getFirst();
+      curP.insertText(lines[0].text, Word.InsertLocation.replace);
+      styleCoverPara(curP, lines[0]);
+      await context.sync();
+
+      // Các dòng tiếp theo luôn tách thành đoạn độc lập
       for (let i = 1; i < lines.length; i++) {
-        const p = cell.body.insertParagraph(lines[i].text, Word.InsertLocation.end);
-        styleCoverPara(p, lines[i]);
+        curP = curP.insertParagraph(lines[i].text, Word.InsertLocation.after);
+        styleCoverPara(curP, lines[i]);
       }
+      await context.sync();
     };
 
     const mainCoverLines = [
-      { text: "BỘ TÀI CHÍNH", size: 13, bold: false, after: 4 },
-      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 2 },
-      { text: "──────────────────", size: 12, bold: false, after: 64 },
+      { text: "BỘ TÀI CHÍNH", size: 13, bold: true, after: 6 },
+      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 4 },
+      { text: "──────────────────────", size: 11, bold: false, after: 64 },
       { text: author, size: 14, bold: true, after: 52 },
       { text: title, size: 17, bold: true, after: 64 },
       { text: docType, size: 14, bold: true, after: 150 },
-      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 0 }
+      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 12 }
     ];
 
     const majorLine = track ? `Ngành: ${major} (${track})` : `Ngành: ${major}`;
     const subCoverLines = [
-      { text: "BỘ TÀI CHÍNH", size: 13, bold: false, after: 4 },
-      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 2 },
-      { text: "──────────────────", size: 12, bold: false, after: 44 },
+      { text: "BỘ TÀI CHÍNH", size: 13, bold: true, after: 6 },
+      { text: "TRƯỜNG ĐẠI HỌC TÀI CHÍNH – MARKETING", size: 14, bold: true, after: 4 },
+      { text: "──────────────────────", size: 11, bold: false, after: 44 },
       { text: author, size: 14, bold: true, after: 36 },
       { text: title, size: 16, bold: true, after: 36 },
       { text: docType, size: 14, bold: true, after: 24 },
       { text: majorLine, size: 13, bold: true, after: 6 },
-      { text: "Mã số: " + majorCode, size: 13, bold: true, after: 42 },
-      { text: "NGƯỜI HƯỚNG DẪN KHOA HỌC: " + advisor.toUpperCase(), size: 13, bold: true, after: 96 },
-      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 0 }
+      { text: "Mã số: " + majorCode, size: 13, bold: true, after: 40 },
+      { text: "NGƯỜI HƯỚNG DẪN KHOA HỌC: " + advisor.toUpperCase(), size: 13, bold: true, after: 92 },
+      { text: "THÀNH PHỐ HỒ CHÍ MINH – NĂM " + year, size: 13, bold: true, after: 12 }
     ];
 
     await Word.run(async (context) => {
@@ -1307,19 +1316,19 @@ async function insertUfmCovers() {
 
       // 1. Tạo Section riêng ở đầu file cho 2 trang bìa
       body.insertBreak(Word.BreakType.sectionNext, Word.InsertLocation.start);
+      await context.sync();
 
       // 2. Chèn Phụ bìa vào đầu Section bìa
-      buildCoverTable(body, subCoverLines);
+      await buildCoverTable(context, body, subCoverLines);
 
       // 3. Ngắt trang giữa Bìa chính và Phụ bìa
       body.insertBreak(Word.BreakType.page, Word.InsertLocation.start);
-
-      // 4. Chèn Bìa chính lên trang đầu tiên
-      buildCoverTable(body, mainCoverLines);
-
       await context.sync();
 
-      // 5. Ngắt liên kết header/footer của nội dung rồi xóa số trang ở Section bìa
+      // 4. Chèn Bìa chính lên trang đầu tiên
+      await buildCoverTable(context, body, mainCoverLines);
+
+      // 5. Ngắt liên kết header/footer phần nội dung rồi xóa số trang ở Section bìa
       const sections = doc.sections;
       sections.load("items");
       await context.sync();
@@ -1342,6 +1351,13 @@ async function insertUfmCovers() {
       }
     });
 
+    showBoxStatus("statusCover", "✅ Đã chèn Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!");
+  } catch (err) {
+    showBoxStatus("statusCover", "❌ Lỗi chèn bìa (dòng " + (err.line || "?") + "): " + err.message, true);
+  }
+}
+
+window.insertUfmCovers = insertUfmCovers;
     showBoxStatus("statusCover", "✅ Đã chèn Bìa chính & Phụ bìa UFM (ẩn số trang bìa)!");
   } catch (err) {
     showBoxStatus("statusCover", "❌ Lỗi chèn bìa (dòng " + (err.line || "?") + "): " + err.message, true);
